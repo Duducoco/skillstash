@@ -17,15 +17,9 @@
 
 ---
 
-## What's New in v0.5.0
+## Overview
 
-- **GitHub Installation** — Install skills directly from any GitHub repository. Supports three repo layouts: standalone skill repo, skill-hub (with `skills/` subdirectory), and subdirectory skill. Multi-skill repos prompt for selection automatically.
-- **`import --force`** — Re-import skills already in the hub, overwriting with the latest version from agent directories.
-- **Windows Path Fix** — Local paths with forward slashes (`C:/...`) are now correctly recognized on Windows.
-- **GitHub Source Tracing** — Installed GitHub skills record their `sourceUrl` in the registry for full provenance tracking.
-- **ClawHub Integration** — Install from the public ClawHub registry via `clawhub:` prefix (requires `clawhub` CLI).
-
-## Architecture
+skillstash is a CLI tool that centralizes your AI agent skills into a single git-backed hub. Install skills from ClawHub, GitHub, or local paths — then let skillstash copy them to every agent directory you use. Pull on one machine, sync everywhere.
 
 ```
 ~/.skillstash/skills-hub/ (git) ← Single source of truth
@@ -45,7 +39,7 @@
  skills/ skills/ skills/  skills/
 ```
 
-**Key design decisions:**
+**Design decisions:**
 - **Copy by default** — maximum compatibility, no symlink permission issues on Windows
 - **Git-backed** — version control, multi-device sync, and conflict resolution built in
 - **Agent-agnostic** — auto-detects installed agents, works with any combination
@@ -63,7 +57,7 @@ npx skillstash --help
 # 1. Initialize the hub with a remote repository
 skillstash init git@github.com:yourname/my-skills.git
 
-# 2. Install skills (from ClawHub, local path, or GitHub)
+# 2. Install skills (from ClawHub, GitHub, or local path)
 skillstash install clawhub:finance-ops
 skillstash install owner/repo@skill-name   # GitHub
 skillstash install ./my-local-skill         # Local path
@@ -76,6 +70,23 @@ skillstash link
 
 # 5. Full sync — pull + verify + link + push
 skillstash sync
+```
+
+## Multi-Device Sync
+
+Since `init` requires a remote URL, multi-device sync is built in from the start:
+
+```bash
+# On device A (first time)
+skillstash init git@github.com:yourname/my-skills.git
+# → Creates hub, imports local skills, pushes to remote
+
+# On device B (first time)
+skillstash init git@github.com:yourname/my-skills.git
+# → Clones hub, imports any local-only skills, pushes merged result
+
+# Daily workflow on any device
+skillstash sync    # pull + verify + link + push
 ```
 
 ## Command Reference
@@ -126,9 +137,9 @@ Scan agent directories (resolving symlinks/Junctions), and import skills into th
 ```bash
 skillstash import                  # Import from all agents
 skillstash import --agent claude   # Only from specific agent
-skillstash import --force         # Re-import existing skills (overwrite)
-skillstash import --dry-run       # Preview without making changes
-skillstash import --no-lint       # Skip SKILL.md validation
+skillstash import --force          # Re-import existing skills (overwrite)
+skillstash import --dry-run        # Preview without making changes
+skillstash import --no-lint        # Skip SKILL.md validation
 ```
 
 ### `skillstash link`
@@ -177,46 +188,8 @@ skillstash diff --agent workbuddy  # Only specific agent
 Remove a skill from hub and all agent directories.
 
 ```bash
-skillstash remove old-skill        # Remove everywhere
+skillstash remove old-skill              # Remove everywhere
 skillstash remove old-skill --keep-agents  # Only remove from hub
-```
-
-## Multi-Device Sync
-
-Since `init` requires a remote URL, multi-device sync is built in from the start:
-
-```bash
-# On device A (first time)
-skillstash init git@github.com:yourname/my-skills.git
-# → Creates hub, imports local skills, pushes to remote
-
-# On device B (first time)
-skillstash init git@github.com:yourname/my-skills.git
-# → Clones hub, imports any local-only skills, pushes merged result
-
-# Daily workflow on any device
-skillstash sync    # pull + verify + link + push
-```
-
-### What happens on `init`
-
-```
-┌──────────────────────────────────────────────────┐
-│            skillstash init <remote-url>           │
-└──────────────────────┬───────────────────────────┘
-                       │
-                Probe remote repo
-                       │
-          ┌────────────┼────────────────┐
-          ▼            ▼                ▼
-     Empty repo   Has registry.json   No registry.json
-          │            │                │
-          ▼            ▼                ▼
-   Create hub     Clone hub          ❌ Reject:
-   Import local   Detect agents     "Not a skillstash repo"
-   skills         Import new        Suggest creating
-   Push to remote local skills      a new empty repo
-                  Push merged
 ```
 
 ## Supported Agents
