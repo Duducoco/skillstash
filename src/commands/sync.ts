@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { hubExists, loadRegistry, saveRegistry, getDefaultHubPath, getSkillsPath } from '../core/hub.js';
-import { gitPull, gitPush, gitCommit, hasRemote } from '../core/git.js';
+import { gitPull, gitPush, gitCommit, hasRemote, type GitPullResult } from '../core/git.js';
 import { copyDirRecursive, ensureDir, exists, removeDir, hashDir } from '../utils/fs.js';
 import { updateSkillInRegistry, removeSkillFromRegistry } from '../core/registry.js';
 import * as path from 'node:path';
@@ -29,10 +29,21 @@ export function registerSyncCommand(program: Command): void {
       // Step 1: Git pull
       if (options.pull && hasRemote(hubPath)) {
         logger.step('Pulling from remote...');
-        if (gitPull(hubPath)) {
+        const pullResult: GitPullResult = gitPull(hubPath);
+        if (pullResult.success) {
           logger.success('Pulled latest changes');
           // Reload registry after pull
           Object.assign(registry, loadRegistry(hubPath));
+        } else if (pullResult.conflict) {
+          logger.error(
+            'Sync aborted: conflicts between local and remote changes must be resolved manually.\n' +
+            '  1. cd into your hub directory\n' +
+            '  2. Run `git rebase --abort` if a rebase is still in progress\n' +
+            '  3. Resolve conflicts, commit, and re-run `skillstash sync`'
+          );
+          return;
+        } else {
+          logger.warn('Pull failed (network or auth issue). Continuing with local state…');
         }
       } else if (options.pull && !hasRemote(hubPath)) {
         logger.info('No remote configured, skipping pull');

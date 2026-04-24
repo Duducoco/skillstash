@@ -201,7 +201,8 @@ describe('gitPushSetUpstream + gitPull + gitPush', () => {
     execSync('git push', { cwd: repoBDir, stdio: 'pipe' });
 
     // Repo A: pull should get b.txt
-    gitPull(repoDir);
+    const pullResult = gitPull(repoDir);
+    expect(pullResult.success).toBe(true);
     expect(fs.existsSync(path.join(repoDir, 'b.txt'))).toBe(true);
   });
 
@@ -225,5 +226,42 @@ describe('gitPushSetUpstream + gitPull + gitPush', () => {
     const cloneDir = path.join(tmpDir, 'verify');
     execSync(`git clone "${bareDir}" "${cloneDir}"`, { stdio: 'pipe' });
     expect(fs.existsSync(path.join(cloneDir, 'y.txt'))).toBe(true);
+  });
+});
+
+describe('gitPull conflict handling', () => {
+  it('detects rebase conflict, aborts rebase, and leaves repo clean', () => {
+    if (skip('git not available')) return;
+    execSync(`git init --bare "${bareDir}"`, { stdio: 'pipe' });
+
+    // Repo A: initial commit with shared file
+    gitInit(repoDir);
+    writeFile(repoDir, 'conflict.txt', 'original content\n');
+    gitCommit(repoDir, 'init');
+    gitAddRemote(repoDir, bareDir);
+    gitPushSetUpstream(repoDir);
+
+    // Repo B: clone, change the shared file, push to bare
+    const repoBDir = path.join(tmpDir, 'repob');
+    execSync(`git clone "${bareDir}" "${repoBDir}"`, { stdio: 'pipe' });
+    execSync('git config user.email "test@test.com"', { cwd: repoBDir, stdio: 'pipe' });
+    execSync('git config user.name "test"', { cwd: repoBDir, stdio: 'pipe' });
+    writeFile(repoBDir, 'conflict.txt', 'remote change\n');
+    execSync('git add -A && git commit -m "remote change"', { cwd: repoBDir, stdio: 'pipe', shell: 'bash' });
+    execSync('git push', { cwd: repoBDir, stdio: 'pipe' });
+
+    // Repo A: make a conflicting local commit (same file, different content)
+    writeFile(repoDir, 'conflict.txt', 'local change\n');
+    gitCommit(repoDir, 'local change');
+
+    // Pull should detect the conflict, abort cleanly, and report it
+    const result = gitPull(repoDir);
+    expect(result.success).toBe(false);
+    expect((result as { success: false; conflict: boolean }).conflict).toBe(true);
+
+    // Repo must be left in a clean state — no rebase in progress
+    const gitDir = path.join(repoDir, '.git');
+    expect(fs.existsSync(path.join(gitDir, 'rebase-merge'))).toBe(false);
+    expect(fs.existsSync(path.join(gitDir, 'rebase-apply'))).toBe(false);
   });
 });

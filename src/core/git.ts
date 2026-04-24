@@ -205,17 +205,49 @@ export function gitCommit(hubPath: string, message: string): boolean {
 }
 
 /**
- * Pull from remote
+ * Result type for gitPull.
+ * - `success: true`  — pull completed cleanly.
+ * - `success: false, conflict: true`  — rebase conflict detected; rebase was aborted automatically.
+ * - `success: false, conflict: false` — other failure (network, auth, …).
  */
-export function gitPull(hubPath: string): boolean {
-  if (!gitAvailable()) return false;
+export type GitPullResult = { success: true } | { success: false; conflict: boolean };
+
+/**
+ * Return true when a rebase is currently in progress in the given repo.
+ */
+function gitIsRebasing(hubPath: string): boolean {
+  const gitDir = path.join(hubPath, '.git');
+  return (
+    fs.existsSync(path.join(gitDir, 'rebase-merge')) ||
+    fs.existsSync(path.join(gitDir, 'rebase-apply'))
+  );
+}
+
+/**
+ * Pull from remote using rebase strategy (`git pull --rebase`).
+ * When a rebase conflict is detected the rebase is automatically aborted so
+ * the repository is left in a clean state, and `{ success: false, conflict: true }`
+ * is returned so callers can surface a meaningful message to the user.
+ */
+export function gitPull(hubPath: string): GitPullResult {
+  if (!gitAvailable()) return { success: false, conflict: false };
 
   try {
-    execSync('git pull', { cwd: hubPath, stdio: 'pipe' });
-    return true;
+    execSync('git pull --rebase', { cwd: hubPath, stdio: 'pipe' });
+    return { success: true };
   } catch (e) {
+    if (gitIsRebasing(hubPath)) {
+      logger.error('Git pull --rebase detected conflicts. Aborting rebase to restore a clean state…');
+      try {
+        execSync('git rebase --abort', { cwd: hubPath, stdio: 'pipe' });
+        logger.warn('Rebase aborted. Resolve conflicts manually, then retry sync.');
+      } catch {
+        logger.warn('Could not abort rebase automatically. Run `git rebase --abort` in the hub directory.');
+      }
+      return { success: false, conflict: true };
+    }
     logger.warn(`Git pull failed: ${(e as Error).message}`);
-    return false;
+    return { success: false, conflict: false };
   }
 }
 
