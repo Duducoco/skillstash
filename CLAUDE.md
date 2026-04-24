@@ -69,4 +69,4 @@ Key command flows:
 
 ## Special Instructions
 - If you modified README.md, please update README_zh.md accordingly.
-- Before committing, please update the version number in package.json,package-lock.json and src/index.ts. You may ask the user whether to increment the patch, minor, or major version number.
+- Before committing, please update the version number in package.json,package-lock.json and src/index.ts. You may ask the user whether to increment the patch, minor, or major version number, this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

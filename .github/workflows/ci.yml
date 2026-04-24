@@ -8,11 +8,15 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest]
         node-version: [20.x, 22.x]
+        exclude:
+          - os: windows-latest
+            node-version: 20.x
 
     steps:
       - uses: actions/checkout@v4
@@ -28,3 +32,10 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Build verification
+        run: npm run build
+
+      - name: Coverage report
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22.x'
+        run: npm run test:coverage
