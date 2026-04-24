@@ -15,6 +15,7 @@ import {
   listHubSkills,
 } from '../src/core/hub.js';
 import { createEmptyRegistry, addSkillToRegistry, addAgentToRegistry } from '../src/core/registry.js';
+import { resetCustomAgents, getAgentDefinitions } from '../src/core/agents.js';
 
 let tmpDir: string;
 let hubDir: string;
@@ -26,6 +27,7 @@ beforeEach(() => {
 
 afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
+  resetCustomAgents();
 });
 
 describe('getRegistryPath', () => {
@@ -99,6 +101,35 @@ describe('loadLocalState / saveLocalState', () => {
 
     const loaded = loadLocalState(hubDir);
     expect(loaded.agents['claude'].enabled).toBe(true);
+  });
+
+  it('loads and registers customAgents from local.json', () => {
+    fs.mkdirSync(hubDir, { recursive: true });
+    fs.writeFileSync(path.join(hubDir, 'local.json'), JSON.stringify({
+      lastSync: null,
+      agents: {},
+      skillAgents: {},
+      customAgents: [
+        { name: 'my-bot', skillsPath: '/tmp/my-bot/skills', linkType: 'copy' },
+        { name: 'dev-agent', skillsPath: '/tmp/dev/skills', linkType: 'copy' },
+      ],
+    }), 'utf-8');
+
+    loadLocalState(hubDir);
+    const defs = getAgentDefinitions();
+    expect(defs.some((d) => d.name === 'my-bot')).toBe(true);
+    expect(defs.some((d) => d.name === 'dev-agent')).toBe(true);
+  });
+
+  it('returns customAgents array from local.json', () => {
+    fs.mkdirSync(hubDir, { recursive: true });
+    const custom = [{ name: 'my-bot', skillsPath: '/tmp/skills', linkType: 'copy' as const }];
+    fs.writeFileSync(path.join(hubDir, 'local.json'), JSON.stringify({
+      lastSync: null, agents: {}, skillAgents: {}, customAgents: custom,
+    }), 'utf-8');
+
+    const state = loadLocalState(hubDir);
+    expect(state.customAgents).toEqual(custom);
   });
 });
 
@@ -200,6 +231,13 @@ describe('saveRegistry', () => {
     expect(gitignore).toContain('local.json');
   });
 
+  it('creates .gitignore containing .lock', () => {
+    saveRegistry(createEmptyRegistry(), hubDir);
+
+    const gitignore = fs.readFileSync(path.join(hubDir, '.gitignore'), 'utf-8');
+    expect(gitignore).toContain('.lock');
+  });
+
   it('registry.json does not contain agents or lastSync', () => {
     const reg = createEmptyRegistry();
     addAgentToRegistry(reg, 'claude', { name: 'claude', skillsPath: '/h/.claude/skills', linkType: 'copy', available: true, enabled: true });
@@ -261,6 +299,12 @@ describe('initHub', () => {
     initHub(hubDir);
     const gitignore = fs.readFileSync(path.join(hubDir, '.gitignore'), 'utf-8');
     expect(gitignore).toContain('local.json');
+  });
+
+  it('creates .gitignore with .lock entry', () => {
+    initHub(hubDir);
+    const gitignore = fs.readFileSync(path.join(hubDir, '.gitignore'), 'utf-8');
+    expect(gitignore).toContain('.lock');
   });
 
   it('creates local.json with detected agents', () => {

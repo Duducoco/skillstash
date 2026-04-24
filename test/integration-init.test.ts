@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { execSync } from 'node:child_process';
 import { gitAvailable } from '../src/core/git.js';
-import { initFreshHub, cloneAndImport } from '../src/commands/init.js';
+import { initFreshHub, cloneAndImport, initLocalHub } from '../src/commands/init.js';
 import { hubExists, loadRegistry, getSkillsPath } from '../src/core/hub.js';
 import { exists } from '../src/utils/fs.js';
 import type { AgentConfig } from '../src/core/registry.js';
@@ -252,4 +252,49 @@ describe('init Case 3: non-empty remote without registry.json', () => {
     expect(result.empty).toBe(false);
     expect(result.hasRegistry).toBe(true);
   });
+});
+
+// ─── Local-only init (no remote) ─────────────────────────────────────────────
+
+describe('initLocalHub: local-only mode', () => {
+  it('creates hub directory and registry.json without a remote', async () => {
+    if (skipIfNoGit()) return;
+    await initLocalHub(hubDir, noPromptSelector, noLinkPrompt);
+    expect(hubExists(hubDir)).toBe(true);
+    expect(fs.existsSync(path.join(hubDir, 'registry.json'))).toBe(true);
+  }, 15000);
+
+  it('initializes a local git repository', async () => {
+    if (skipIfNoGit()) return;
+    await initLocalHub(hubDir, noPromptSelector, noLinkPrompt);
+    expect(fs.existsSync(path.join(hubDir, '.git'))).toBe(true);
+  }, 15000);
+
+  it('creates skills/ subdirectory', async () => {
+    if (skipIfNoGit()) return;
+    await initLocalHub(hubDir, noPromptSelector, noLinkPrompt);
+    expect(fs.existsSync(getSkillsPath(hubDir))).toBe(true);
+  }, 15000);
+
+  it('creates an initial git commit', async () => {
+    if (skipIfNoGit()) return;
+    await initLocalHub(hubDir, noPromptSelector, noLinkPrompt);
+    // If git repo was initialized and committed, git log should succeed
+    const log = execSync('git log --oneline', { cwd: hubDir, stdio: 'pipe' }).toString().trim();
+    expect(log.length).toBeGreaterThan(0);
+  }, 15000);
+
+  it('does NOT configure a remote', async () => {
+    if (skipIfNoGit()) return;
+    await initLocalHub(hubDir, noPromptSelector, noLinkPrompt);
+    const remotes = execSync('git remote', { cwd: hubDir, stdio: 'pipe' }).toString().trim();
+    expect(remotes).toBe('');
+  }, 15000);
+
+  it('registry version is 1.0 after local init', async () => {
+    if (skipIfNoGit()) return;
+    await initLocalHub(hubDir, noPromptSelector, noLinkPrompt);
+    const reg = loadRegistry(hubDir);
+    expect(reg.version).toBe('1.0');
+  }, 15000);
 });
