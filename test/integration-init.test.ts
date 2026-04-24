@@ -17,6 +17,9 @@ import type { AgentConfig } from '../src/core/registry.js';
 const noPromptSelector = async (agents: AgentConfig[]) =>
   new Set(agents.filter((a) => a.available).map((a) => a.name));
 
+// In tests, skip link prompt
+const noLinkPrompt = async () => false;
+
 const isGitAvailable = gitAvailable();
 
 let tmpDir: string;
@@ -101,25 +104,25 @@ afterEach(() => {
 describe('init Case 1: empty remote → fresh hub', () => {
   it('creates hub directory and registry.json', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir, noPromptSelector);
+    await initFreshHub(hubDir, bareDir, noPromptSelector, noLinkPrompt);
     expect(hubExists(hubDir)).toBe(true);
   }, 30000);
 
   it('initializes git repo in hub', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir, noPromptSelector);
+    await initFreshHub(hubDir, bareDir, noPromptSelector, noLinkPrompt);
     expect(fs.existsSync(path.join(hubDir, '.git'))).toBe(true);
   }, 30000);
 
   it('creates skills/ subdirectory', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir, noPromptSelector);
+    await initFreshHub(hubDir, bareDir, noPromptSelector, noLinkPrompt);
     expect(fs.existsSync(getSkillsPath(hubDir))).toBe(true);
   }, 30000);
 
   it('pushes initial commit to remote', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir, noPromptSelector);
+    await initFreshHub(hubDir, bareDir, noPromptSelector, noLinkPrompt);
     // Verify remote has commits by cloning
     const cloneDir = path.join(tmpDir, 'verify');
     execSync(`git clone "${bareDir}" "${cloneDir}"`, { stdio: 'pipe' });
@@ -128,7 +131,7 @@ describe('init Case 1: empty remote → fresh hub', () => {
 
   it('registry has empty skills on fresh init (no local agents in isolated test)', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir, noPromptSelector);
+    await initFreshHub(hubDir, bareDir, noPromptSelector, noLinkPrompt);
     const reg = loadRegistry(hubDir);
     // Skills may be imported from real agent dirs on the machine, but structure is valid
     expect(typeof reg.skills).toBe('object');
@@ -142,14 +145,14 @@ describe('init Case 2: non-empty remote with registry.json → clone + import', 
   it('clones the remote hub into hubDir', async () => {
     if (skipIfNoGit()) return;
     makeRegistryInBare(bareDir);
-    await cloneAndImport(hubDir, bareDir, noPromptSelector);
+    await cloneAndImport(hubDir, bareDir, noPromptSelector, noLinkPrompt);
     expect(hubExists(hubDir)).toBe(true);
   }, 30000);
 
   it('registry.json is present after clone', async () => {
     if (skipIfNoGit()) return;
     makeRegistryInBare(bareDir);
-    await cloneAndImport(hubDir, bareDir, noPromptSelector);
+    await cloneAndImport(hubDir, bareDir, noPromptSelector, noLinkPrompt);
     expect(fs.existsSync(path.join(hubDir, 'registry.json'))).toBe(true);
   }, 30000);
 
@@ -181,7 +184,7 @@ describe('init Case 2: non-empty remote with registry.json → clone + import', 
       fs.rmSync(workDir, { recursive: true, force: true });
     }
 
-    await cloneAndImport(hubDir, bareDir, noPromptSelector);
+    await cloneAndImport(hubDir, bareDir, noPromptSelector, noLinkPrompt);
     const clonedReg = loadRegistry(hubDir);
     expect(clonedReg.skills['remote-skill']).toBeDefined();
   }, 30000);
@@ -189,7 +192,7 @@ describe('init Case 2: non-empty remote with registry.json → clone + import', 
   it('populates agents from current machine after clone', async () => {
     if (skipIfNoGit()) return;
     makeRegistryInBare(bareDir);
-    await cloneAndImport(hubDir, bareDir, noPromptSelector);
+    await cloneAndImport(hubDir, bareDir, noPromptSelector, noLinkPrompt);
     const reg = loadRegistry(hubDir);
     // detectAgents() always returns at least the 5 known agents
     expect(Object.keys(reg.agents).length).toBeGreaterThan(0);

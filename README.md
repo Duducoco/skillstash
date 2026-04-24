@@ -98,10 +98,12 @@ Initialize the skills-hub with a remote Git repository. The hub is always at `~/
 
 During init, you'll be prompted to choose which agents to manage. Use arrow keys to navigate, space to toggle selection, and enter to confirm. You can change this later with `skillstash agents`.
 
+After agent selection and skill import, you'll be asked whether to run `link` immediately — this copies all skills from the hub into your managed agent directories so they're ready to use right away.
+
 | Remote Status | Behavior |
 |---|---|
-| **Empty repo** | Create hub locally → select agents → auto-import existing agent skills → git push |
-| **Non-empty with `registry.json`** | Clone hub → select agents → re-detect local agents → import new local skills → git push |
+| **Empty repo** | Create hub locally → select agents → auto-import existing agent skills → prompt to link → git push |
+| **Non-empty with `registry.json`** | Clone hub → select agents → re-detect local agents → import new local skills → prompt to link → git push |
 | **Non-empty without `registry.json`** | ❌ Reject — not a skillstash repo. Prompt to create a new empty repo |
 
 ```bash

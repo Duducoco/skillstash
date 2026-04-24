@@ -1,4 +1,4 @@
-import { checkbox } from '@inquirer/prompts';
+import { checkbox, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { AgentConfig } from '../core/registry.js';
 
@@ -28,4 +28,19 @@ export async function selectAgents(agents: AgentConfig[]): Promise<Set<string>> 
   });
 
   return new Set(selected);
+}
+
+/**
+ * Ask the user whether to run link after init.
+ * Falls back to false (skip) in non-TTY environments.
+ */
+export async function promptLinkNow(): Promise<boolean> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    return false;
+  }
+
+  return confirm({
+    message: 'Run link now? This will copy all skills from the hub to your managed agent directories.',
+    default: true,
+  });
 }

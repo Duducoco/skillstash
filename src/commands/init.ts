@@ -3,9 +3,9 @@ import * as fs from 'node:fs';
 import { Command } from 'commander';
 import { initHub, hubExists, getDefaultHubPath, loadRegistry, saveRegistry, detectAgents, getSkillsPath } from '../core/hub.js';
 import { addSkillToRegistry, setAgentEnabled } from '../core/registry.js';
-import { selectAgents } from '../utils/prompt.js';
+import { selectAgents, promptLinkNow } from '../utils/prompt.js';
 import { gitInit, gitProbeRemote, gitClone, gitAddRemote, gitPushSetUpstream, gitCommit } from '../core/git.js';
-import { copyDirRecursive, hashDir, exists } from '../utils/fs.js';
+import { copyDirRecursive, hashDir, exists, ensureDir, removeDir } from '../utils/fs.js';
 import { getSkillVersion, getSkillDescription, lintSkill } from '../core/skill.js';
 import { logger } from '../utils/logger.js';
 import chalk from 'chalk';
@@ -163,7 +163,8 @@ export function registerInitCommand(program: Command): void {
 export async function initFreshHub(
   hubPath: string,
   remoteUrl: string,
-  agentSelector?: (agents: import('../core/registry.js').AgentConfig[]) => Promise<Set<string>>
+  agentSelector?: (agents: import('../core/registry.js').AgentConfig[]) => Promise<Set<string>>,
+  linkPrompter?: () => Promise<boolean>
 ): Promise<void> {
   // Create hub structure
   const result = initHub(hubPath);
@@ -233,7 +234,7 @@ export async function initFreshHub(
   }
 
   // Show summary
-  showInitSummary(hubPath, registry);
+  await showInitSummary(hubPath, registry, linkPrompter);
 }
 
 /**
@@ -242,7 +243,8 @@ export async function initFreshHub(
 export async function cloneAndImport(
   hubPath: string,
   remoteUrl: string,
-  agentSelector?: (agents: import('../core/registry.js').AgentConfig[]) => Promise<Set<string>>
+  agentSelector?: (agents: import('../core/registry.js').AgentConfig[]) => Promise<Set<string>>,
+  linkPrompter?: () => Promise<boolean>
 ): Promise<void> {
   // Ensure parent directory exists
   fs.mkdirSync(path.dirname(hubPath), { recursive: true });
@@ -328,13 +330,60 @@ export async function cloneAndImport(
   logger.info(`\n  Hub contains ${chalk.bold(skillCount)} skill(s) from remote`);
 
   // Show summary
-  showInitSummary(hubPath, registry);
+  await showInitSummary(hubPath, registry, linkPrompter);
 }
 
 /**
- * Display the post-init summary
+ * Run link during init — copy skills from hub to managed agent directories
  */
-function showInitSummary(hubPath: string, registry: ReturnType<typeof loadRegistry>): void {
+async function runInitLink(
+  hubPath: string,
+  registry: ReturnType<typeof loadRegistry>,
+  agents: import('../core/registry.js').AgentConfig[],
+  skillNames: string[]
+): Promise<void> {
+  const skillsDir = getSkillsPath(hubPath);
+  let totalLinked = 0;
+
+  logger.step('Linking skills to agent directories...');
+
+  for (const agent of agents) {
+    ensureDir(agent.skillsPath);
+
+    for (const skillName of skillNames) {
+      const srcDir = path.join(skillsDir, skillName);
+      const destDir = path.join(agent.skillsPath, skillName);
+
+      if (!exists(srcDir)) continue;
+
+      try {
+        if (exists(destDir)) {
+          removeDir(destDir);
+        }
+        copyDirRecursive(srcDir, destDir);
+
+        if (!registry.skills[skillName].agents.includes(agent.name)) {
+          registry.skills[skillName].agents.push(agent.name);
+        }
+        totalLinked++;
+      } catch (e) {
+        logger.error(`  ${agent.name}/${skillName}: ${(e as Error).message}`);
+      }
+    }
+  }
+
+  saveRegistry(registry, hubPath);
+  logger.success(`Linked ${totalLinked} skill(s) to ${agents.length} agent(s)`);
+}
+
+/**
+ * Display the post-init summary and optionally run link
+ */
+async function showInitSummary(
+  hubPath: string,
+  registry: ReturnType<typeof loadRegistry>,
+  linkPrompter?: () => Promise<boolean>
+): Promise<void> {
   const agents = Object.values(registry.agents);
   const skillCount = Object.keys(registry.skills).length;
 
@@ -353,6 +402,18 @@ function showInitSummary(hubPath: string, registry: ReturnType<typeof loadRegist
   logger.info('');
   logger.success(`Done! Hub initialized at ${chalk.cyan(hubPath)}`);
   logger.info(`  Skills: ${skillCount}`);
+
+  // Prompt to run link now
+  const managedAgents = agents.filter((a) => a.available && a.enabled);
+  const skillNames = Object.keys(registry.skills).filter((s) => registry.skills[s].enabled);
+
+  if (managedAgents.length > 0 && skillNames.length > 0) {
+    const shouldLink = await (linkPrompter ?? promptLinkNow)();
+    if (shouldLink) {
+      await runInitLink(hubPath, registry, managedAgents, skillNames);
+    }
+  }
+
   logger.info('');
   logger.info('Next steps:');
   logger.info(`  ${chalk.cyan('skillstash install <name>')}  — Install a new skill`);
