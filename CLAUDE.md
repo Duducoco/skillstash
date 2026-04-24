@@ -51,13 +51,23 @@ Key command flows:
 
 ### Supported agents (auto-detected)
 
-| Agent | Skills path |
-|---|---|
-| Claude Code | `~/.claude/skills/` |
-| WorkBuddy | `~/.workbuddy/skills/` |
-| CodeBuddy | `~/.codebuddy/skills/` |
-| Codex | `~/.codex/skills/` |
-| Agents (generic) | `~/.agents/skills/` |
+| Agent | Key | Global skills path |
+|---|---|---|
+| Claude Code | `claude` | `~/.claude/skills` |
+| Codex CLI | `codex` | `~/.codex/skills` |
+| Gemini CLI | `gemini` | `~/.gemini/skills` |
+| Cursor | `cursor` | `~/.cursor/skills-cursor` |
+| Kilo Code | `kilocode` | `~/.kilocode/skills` |
+| TRAE (ByteDance) | `trae` | `~/.trae/skills` |
+| Qoder (Alibaba) | `qoder` | `~/.qoder/skills` |
+| CodeBuddy (Tencent) | `codebuddy` | `~/.codebuddy/skills` |
+| Kimi Code | `kimi` | `~/.config/agents/skills` |
+| OpenClaw | `openclaw` | `~/.openclaw/skills` |
+| Vercel Skills | `agents` | `~/.agents/skills` |
+| OpenCode | `opencode` | `~/.opencode/skills` |
+| AntiGravity | `antigravity` | `~/.gemini/antigravity/skills` |
+| Codes CLI | `codes` | `~/.codes/skills` |
+| iFlow CLI | `iflow` | `~/.iflow/skills` |
 
 ### Key design notes
 

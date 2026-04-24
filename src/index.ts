@@ -36,7 +36,7 @@ const program = new Command();
 program
   .name('skillstash')
   .description('Personal skill management system with multi-device & multi-agent sync')
-  .version('0.8.0')
+  .version('0.8.1')
   .helpOption('-h, --help', 'Show help');
 
 // Register all commands
