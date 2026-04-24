@@ -14,7 +14,8 @@ export async function selectAgents(agents: AgentConfig[]): Promise<Set<string>> 
   const choices = agents.map((agent) => ({
     value: agent.name,
     name: `${agent.name}  ${agent.available ? chalk.green('✓ available') : chalk.gray('✗ not found')}`,
-    checked: agent.enabled,
+    checked: agent.available ? agent.enabled : false,
+    disabled: agent.available ? false : true,
   }));
 
   const selected = await checkbox({
