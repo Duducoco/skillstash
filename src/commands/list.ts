@@ -7,6 +7,32 @@ import { getSkillVersion, getSkillDescription } from '../core/skill.js';
 import { logger } from '../utils/logger.js';
 import chalk from 'chalk';
 
+const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
+
+// CJK and fullwidth chars take 2 columns in a terminal
+const charWidth = (ch: string) => {
+  const cp = ch.codePointAt(0)!;
+  if ((cp >= 0x4E00 && cp <= 0x9FFF) ||   // CJK Unified
+      (cp >= 0x3400 && cp <= 0x4DBF) ||   // CJK Extension A
+      (cp >= 0xF900 && cp <= 0xFAFF) ||   // CJK Compat
+      (cp >= 0x3000 && cp <= 0x303F) ||   // CJK Symbols
+      (cp >= 0xFF01 && cp <= 0xFF60) ||   // Fullwidth forms
+      (cp >= 0xAC00 && cp <= 0xD7AF) ||   // Hangul
+      (cp >= 0xFE30 && cp <= 0xFE6F)) {   // CJK Compat Forms
+    return 2;
+  }
+  return 1;
+};
+
+const visLen = (s: string) => {
+  const clean = stripAnsi(s);
+  let len = 0;
+  for (const ch of clean) len += charWidth(ch);
+  return len;
+};
+
+const padVis = (s: string, len: number) => s + ' '.repeat(Math.max(0, len - visLen(s)));
+
 export function registerListCommand(program: Command): void {
   program
     .command('list')
@@ -41,7 +67,7 @@ export function registerListCommand(program: Command): void {
           'Status'
         )
       );
-      logger.info(chalk.gray('  ' + '─'.repeat(80)));
+      logger.info(chalk.gray('  ' + '─'.repeat(102)));
 
       for (const name of skillNames) {
         const meta = registry.skills[name];
@@ -59,10 +85,10 @@ export function registerListCommand(program: Command): void {
           : chalk.gray('none');
 
         const line = '  ' +
-          chalk.bold(name.padEnd(28)) +
+          padVis(chalk.bold(name), 28) +
           (meta.version || '?').padEnd(10) +
           meta.source.padEnd(14) +
-          agentList.padEnd(30) +
+          padVis(agentList, 50) +
           status;
 
         logger.info(line);
