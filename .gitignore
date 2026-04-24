@@ -5,3 +5,4 @@ dist/
 *.d.ts.map
 .claude
 .spec-workflow
+NEXT.md
