@@ -38,6 +38,11 @@ function writeFile(repoPath: string, name: string, content: string) {
   fs.writeFileSync(path.join(repoPath, name), content, 'utf-8');
 }
 
+function gitAddCommit(cwd: string, message: string) {
+  execSync('git add -A', { cwd, stdio: 'pipe' });
+  execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, { cwd, stdio: 'pipe' });
+}
+
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'skillstash-git-'));
   repoDir = path.join(tmpDir, 'repo');
@@ -131,13 +136,10 @@ describe('hasRemote', () => {
     expect(hasRemote(repoDir)).toBe(true);
   });
 
-  // NOTE: hasRemote() uses `git remote` which exits 0 even with no remotes configured.
-  // The current implementation therefore returns true in both cases — this is a known
-  // behavioral quirk. The test below documents actual behavior rather than ideal behavior.
-  it('returns true even with no remote configured (known quirk)', () => {
+  it('returns false with no remote configured', () => {
     if (skip('git not available')) return;
     gitInit(repoDir);
-    expect(hasRemote(repoDir)).toBe(true);
+    expect(hasRemote(repoDir)).toBe(false);
   });
 });
 
@@ -197,7 +199,7 @@ describe('gitPushSetUpstream + gitPull + gitPush', () => {
     execSync('git config user.email "test@test.com"', { cwd: repoBDir, stdio: 'pipe' });
     execSync('git config user.name "test"', { cwd: repoBDir, stdio: 'pipe' });
     writeFile(repoBDir, 'b.txt', 'b');
-    execSync('git add -A && git commit -m "add b"', { cwd: repoBDir, stdio: 'pipe', shell: 'bash' });
+    gitAddCommit(repoBDir, 'add b');
     execSync('git push', { cwd: repoBDir, stdio: 'pipe' });
 
     // Repo A: pull should get b.txt

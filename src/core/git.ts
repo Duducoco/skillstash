@@ -424,8 +424,10 @@ export function hasRemote(hubPath: string): boolean {
   if (!gitAvailable()) return false;
 
   try {
-    execSync('git remote', { cwd: hubPath, stdio: 'pipe' });
-    return true;
+    const output = execSync('git remote', { cwd: hubPath, stdio: 'pipe' })
+      .toString()
+      .trim();
+    return output.length > 0;
   } catch {
     return false;
   }

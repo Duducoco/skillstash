@@ -5,7 +5,7 @@ import { execSync } from 'node:child_process';
 import { Command } from 'commander';
 import { hubExists, getSkillsPath, loadRegistry, saveRegistry, getDefaultHubPath } from '../core/hub.js';
 import { addSkillToRegistry, updateSkillInRegistry } from '../core/registry.js';
-import { copyDirRecursive, hashDir, exists } from '../utils/fs.js';
+import { copyDirRecursive, hashDir, exists, removeDir } from '../utils/fs.js';
 import { getSkillName, getSkillVersion, getSkillDescription, lintSkill } from '../core/skill.js';
 import { gitCommit, gitShallowClone, gitAvailable } from '../core/git.js';
 import { logger } from '../utils/logger.js';
@@ -60,6 +60,21 @@ function installFromClawhub(slug: string): string | null {
     logger.info(t('install.clawhubLoginCmd'));
     return null;
   }
+}
+
+function resolveSafeSkillTarget(skillsRoot: string, rawName: string): { name: string; destDir: string } | null {
+  const name = rawName.trim();
+  if (!name || name === '.' || name === '..') return null;
+  if (/[\\/]/.test(name)) return null;
+  if (/^[A-Za-z]:/.test(name)) return null;
+
+  const destDir = path.join(skillsRoot, name);
+  const root = path.resolve(skillsRoot);
+  const resolvedDest = path.resolve(destDir);
+  const rootPrefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  if (!resolvedDest.startsWith(rootPrefix)) return null;
+
+  return { name, destDir };
 }
 
 /**
@@ -275,11 +290,16 @@ export async function installFromPath(
   }
 
   // Get skill metadata
-  const name = overrideName || getSkillName(skillDir);
+  const rawName = overrideName || getSkillName(skillDir);
   const version = getSkillVersion(skillDir);
   const description = getSkillDescription(skillDir);
-  // Use skill name as directory name (avoids temp dir names for GitHub/ClawHub sources)
-  const destDir = path.join(getSkillsPath(hubPath), name);
+  const skillsRoot = getSkillsPath(hubPath);
+  const resolvedTarget = resolveSafeSkillTarget(skillsRoot, rawName);
+  if (!resolvedTarget) {
+    logger.error(`Invalid skill name "${rawName}". Skill names cannot contain path separators or parent segments.`);
+    return;
+  }
+  const { name, destDir } = resolvedTarget;
 
   // Check if already installed
   const registry = loadRegistry(hubPath);
@@ -291,6 +311,9 @@ export async function installFromPath(
     logger.step(t('install.installingSkill', { name: chalk.bold(name), version }));
   }
 
+  if (exists(destDir)) {
+    removeDir(destDir);
+  }
   copyDirRecursive(skillDir, destDir);
   const hash = hashDir(destDir);
 

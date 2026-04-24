@@ -92,9 +92,18 @@ export function registerAssignCommand(program: Command): void {
             if (agent.linkType === 'copy') {
               if (exists(destDir)) removeDir(destDir);
               copyDirRecursive(srcDir, destDir);
-            } else if (agent.linkType === 'symlink') {
+            } else if (agent.linkType === 'symlink' || agent.linkType === 'junction') {
               if (exists(destDir)) fs.rmSync(destDir, { recursive: true, force: true });
               fs.symlinkSync(srcDir, destDir, 'junction');
+            } else {
+              logger.error(
+                t('common.skillLinkError', {
+                  agent: agent.name,
+                  skill: skillName,
+                  message: `unsupported link type "${agent.linkType}"`,
+                })
+              );
+              continue;
             }
 
             if (!registry.skills[skillName].agents.includes(agent.name)) {

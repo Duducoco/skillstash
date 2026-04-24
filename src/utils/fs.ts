@@ -30,14 +30,24 @@ export function copyDirRecursive(src: string, dest: string): void {
  */
 export function removeDir(dir: string): void {
   if (!fs.existsSync(dir)) return;
+  const stat = fs.lstatSync(dir);
+  if (stat.isSymbolicLink()) {
+    fs.unlinkSync(dir);
+    return;
+  }
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
+    const entryStat = fs.lstatSync(fullPath);
+    if (entryStat.isSymbolicLink()) {
+      fs.unlinkSync(fullPath);
+      continue;
+    }
     if (entry.isDirectory()) {
       removeDir(fullPath);
-    } else {
-      fs.unlinkSync(fullPath);
+      continue;
     }
+    fs.unlinkSync(fullPath);
   }
   fs.rmdirSync(dir);
 }

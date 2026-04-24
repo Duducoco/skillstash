@@ -49,7 +49,7 @@ export function registerSyncCommand(program: Command): void {
           gitCommit(hubPath, 'sync: auto-commit local changes before pull');
         }
 
-        logger.step('Fetching remote updates...');
+        logger.step(t('sync.fetchingRemote'));
         const fetched = gitFetch(hubPath);
         if (!fetched) {
           logger.warn(t('sync.fetchFailed'));
@@ -172,6 +172,8 @@ export function registerSyncCommand(program: Command): void {
         }
       }
 
+      const currentSkillNames = Object.keys(registry.skills);
+
       if (issues > 0) {
         saveRegistry(registry, hubPath);
         gitCommit(hubPath, `sync: auto-fix ${issues} issue(s)`);
@@ -182,7 +184,9 @@ export function registerSyncCommand(program: Command): void {
       // Step 3: Link to agents
       if (options.link) {
         const agents = Object.values(registry.agents).filter((a) => a.available && a.enabled);
-        const enabledSkills = skillNames.filter((s) => registry.skills[s].enabled);
+        const enabledSkills = currentSkillNames.filter(
+          (s) => !!registry.skills[s] && registry.skills[s].enabled
+        );
 
         if (agents.length === 0) {
           logger.warn(t('sync.noAgentsToLink'));

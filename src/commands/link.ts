@@ -77,11 +77,14 @@ export function registerLinkCommand(program: Command): void {
                 removeDir(destDir);
               }
               copyDirRecursive(srcDir, destDir);
-            } else if (agent.linkType === 'symlink') {
+            } else if (agent.linkType === 'symlink' || agent.linkType === 'junction') {
               if (exists(destDir)) {
                 fs.rmSync(destDir, { recursive: true, force: true });
               }
               fs.symlinkSync(srcDir, destDir, 'junction');
+            } else {
+              logger.warn(`  ! ${skillName}: unsupported link type "${agent.linkType}"`);
+              continue;
             }
 
             // Update registry to track which agents have this skill

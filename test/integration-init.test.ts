@@ -13,9 +13,8 @@ import { hubExists, loadRegistry, getSkillsPath } from '../src/core/hub.js';
 import { exists } from '../src/utils/fs.js';
 import type { AgentConfig } from '../src/core/registry.js';
 
-// In tests, auto-select all available agents (no interactive prompt)
-const noPromptSelector = async (agents: AgentConfig[]) =>
-  new Set(agents.filter((a) => a.available).map((a) => a.name));
+// In tests, select no managed agents to keep init deterministic and fast
+const noPromptSelector = async (_agents: AgentConfig[]) => new Set<string>();
 
 // In tests, skip link prompt
 const noLinkPrompt = async () => false;
@@ -29,6 +28,29 @@ let bareDir: string;
 function skipIfNoGit() {
   if (!isGitAvailable) return true;
   return false;
+}
+
+function gitAddCommit(cwd: string, message: string) {
+  execSync('git add -A', { cwd, stdio: 'pipe' });
+  execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, { cwd, stdio: 'pipe' });
+}
+
+function sleepMs(ms: number) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function rmWithRetry(target: string) {
+  let lastError: unknown = null;
+  for (let i = 0; i < 6; i++) {
+    try {
+      fs.rmSync(target, { recursive: true, force: true });
+      return;
+    } catch (e) {
+      lastError = e;
+      sleepMs(30 * (i + 1));
+    }
+  }
+  if (lastError) throw lastError;
 }
 
 function makeSkillInBare(bareRepo: string, skillName: string) {
@@ -45,10 +67,10 @@ function makeSkillInBare(bareRepo: string, skillName: string) {
     );
     execSync('git config user.email "test@test.com"', { cwd: workDir, stdio: 'pipe' });
     execSync('git config user.name "test"', { cwd: workDir, stdio: 'pipe' });
-    execSync('git add -A && git commit -m "add skill"', { cwd: workDir, stdio: 'pipe', shell: 'bash' });
+    gitAddCommit(workDir, 'add skill');
     execSync('git push', { cwd: workDir, stdio: 'pipe' });
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    rmWithRetry(workDir);
   }
 }
 
@@ -64,10 +86,10 @@ function makeRegistryInBare(bareRepo: string) {
     fs.mkdirSync(path.join(workDir, 'skills'), { recursive: true });
     execSync('git config user.email "test@test.com"', { cwd: workDir, stdio: 'pipe' });
     execSync('git config user.name "test"', { cwd: workDir, stdio: 'pipe' });
-    execSync('git add -A && git commit -m "init registry"', { cwd: workDir, stdio: 'pipe', shell: 'bash' });
+    gitAddCommit(workDir, 'init registry');
     execSync('git push', { cwd: workDir, stdio: 'pipe' });
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    rmWithRetry(workDir);
   }
 }
 
@@ -79,10 +101,10 @@ function makeNonSkillstashBare(bareRepo: string) {
     fs.writeFileSync(path.join(workDir, 'README.md'), '# Some other repo', 'utf-8');
     execSync('git config user.email "test@test.com"', { cwd: workDir, stdio: 'pipe' });
     execSync('git config user.name "test"', { cwd: workDir, stdio: 'pipe' });
-    execSync('git add -A && git commit -m "init"', { cwd: workDir, stdio: 'pipe', shell: 'bash' });
+    gitAddCommit(workDir, 'init');
     execSync('git push', { cwd: workDir, stdio: 'pipe' });
   } finally {
-    fs.rmSync(workDir, { recursive: true, force: true });
+    rmWithRetry(workDir);
   }
 }
 
@@ -96,7 +118,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  fs.rmSync(tmpDir, { recursive: true, force: true });
+  rmWithRetry(tmpDir);
 });
 
 // ─── Case 1: Empty remote ─────────────────────────────────────────────────────
@@ -178,10 +200,10 @@ describe('init Case 2: non-empty remote with registry.json → clone + import', 
       fs.writeFileSync(path.join(workDir, 'registry.json'), JSON.stringify(reg, null, 2), 'utf-8');
       execSync('git config user.email "t@t.com"', { cwd: workDir, stdio: 'pipe' });
       execSync('git config user.name "t"', { cwd: workDir, stdio: 'pipe' });
-      execSync('git add -A && git commit -m "add remote skill"', { cwd: workDir, stdio: 'pipe', shell: 'bash' });
+      gitAddCommit(workDir, 'add remote skill');
       execSync('git push', { cwd: workDir, stdio: 'pipe' });
     } finally {
-      fs.rmSync(workDir, { recursive: true, force: true });
+      rmWithRetry(workDir);
     }
 
     await cloneAndImport(hubDir, bareDir, noPromptSelector, noLinkPrompt);
