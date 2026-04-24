@@ -54,8 +54,8 @@ skillstash is a CLI tool that centralizes your AI agent skills into a single git
 **Design decisions:**
 - **Copy by default** — maximum compatibility, no symlink permission issues on Windows
 - **Git-backed** — version control, multi-device sync, and conflict resolution built in
-- **Agent-agnostic** — auto-detects installed agents, works with any combination
-- **Remote-first init** — `init` requires a remote Git URL, ensuring multi-device sync from day one
+- **Agent-agnostic** — auto-detects installed agents; supports custom agents via `agents add`
+- **Local-first, remote-optional** — `init` works offline; add a remote later with `add-remote`
 
 ## 🚀 Quick Start
 
@@ -66,9 +66,15 @@ npm install -g skillstash
 # Or use directly with npx
 npx skillstash --help
 
-# 1. Initialize the hub with a remote repository
+# 1a. Initialize a local-only hub (no Git remote required)
+skillstash init
+# → Interactive: select language, choose which agents to manage
+
+# 1b. Or initialize with a remote repository for multi-device sync
 skillstash init git@github.com:yourname/my-skills.git
-# → Interactive prompt: choose which agents to manage (space to toggle, enter to confirm)
+
+# 1c. Already have a local hub? Link it to a remote later
+skillstash add-remote git@github.com:yourname/my-skills.git
 
 # 2. Install skills (from ClawHub, GitHub, or local path)
 skillstash install clawhub:finance-ops
@@ -87,14 +93,17 @@ skillstash sync
 
 ## 🔄 Multi-Device Sync
 
-Since `init` requires a remote URL, multi-device sync is built in from the start:
+skillstash supports multi-device sync via a shared Git remote. A remote is **optional** — you can start local and add one later.
 
 ```bash
-# On device A (first time)
-skillstash init git@github.com:yourname/my-skills.git
-# → Creates hub, imports local skills, pushes to remote
+# On device A (start local, no remote)
+skillstash init
+# → Creates local hub, imports skills
 
-# On device B (first time)
+# Add remote later
+skillstash add-remote git@github.com:yourname/my-skills.git
+
+# On device B (clone existing hub)
 skillstash init git@github.com:yourname/my-skills.git
 # → Clones hub, imports any local-only skills, pushes merged result
 
@@ -130,23 +139,36 @@ skillstash sync
 
 ## 📖 Command Reference
 
-### `skillstash init <remote-url>`
+### `skillstash init [remote-url]`
 
-Initialize the skills-hub with a remote Git repository. The hub is always at `~/.skillstash/skills-hub`.
+Initialize the skills-hub. The hub is always at `~/.skillstash/skills-hub`.
 
-During init, you'll be prompted to choose which agents to manage. Use arrow keys to navigate, space to toggle selection, and enter to confirm. You can change this later with `skillstash agents`.
+During init, you'll be prompted to select a display language (English / 中文) and choose which agents to manage. Use arrow keys to navigate, space to toggle selection, and enter to confirm.
 
 After agent selection and skill import, you'll be asked whether to run `link` immediately — this copies all skills from the hub into your managed agent directories so they're ready to use right away.
 
-| Remote Status | Behavior |
+The remote URL is **optional**. Omit it to create a local-only hub and add a remote later with `add-remote`.
+
+| Remote status | Behavior |
 |---|---|
-| **Empty repo** | Create hub locally → select agents → auto-import existing agent skills → prompt to link → git push |
-| **Non-empty with `registry.json`** | Clone hub → select agents → re-detect local agents → import new local skills → prompt to link → git push |
+| **No URL (local mode)** | Create hub locally → select language → select agents → auto-import existing agent skills → prompt to link |
+| **Empty repo** | Create hub locally → select language → select agents → auto-import existing agent skills → prompt to link → git push |
+| **Non-empty with `registry.json`** | Clone hub → select language → select agents → re-detect local agents → import new local skills → prompt to link → git push |
 | **Non-empty without `registry.json`** | ❌ Reject — not a skillstash repo. Prompt to create a new empty repo |
 
 ```bash
+skillstash init                                       # Local-only hub
 skillstash init git@github.com:yourname/my-skills.git
 skillstash init https://github.com/yourname/my-skills.git
+```
+
+### `skillstash add-remote <remote-url>`
+
+Link an existing local hub to a Git remote and push. Use this after running `skillstash init` without a URL.
+
+```bash
+skillstash add-remote git@github.com:yourname/my-skills.git
+skillstash add-remote https://github.com/yourname/my-skills.git
 ```
 
 ### `skillstash install <source>`
@@ -244,9 +266,23 @@ skillstash agents list              # Show all agents with available/managed sta
 skillstash agents select            # Interactively choose which agents to manage
 skillstash agents enable claude     # Enable a specific agent
 skillstash agents disable codex     # Disable an agent (skip for link/sync)
+skillstash agents add <name> --path <skills-path>   # Register a custom agent
+skillstash agents remove <name>     # Unregister a custom agent (built-ins cannot be removed)
 ```
 
 The `select` subcommand shows the same interactive checkbox UI as `init` — arrow keys to navigate, space to toggle, enter to confirm. Shortcuts: `a` to select all, `i` to invert selection.
+
+**Custom agents** are registered with `agents add` and stored in `local.json` (device-local). Built-in agents (workbuddy, codebuddy, codex, claude, agents) cannot be removed, only enabled/disabled.
+
+### `skillstash language`
+
+Change the display language for all CLI output. The setting is persisted to `local.json` and applied automatically on every subsequent command.
+
+```bash
+skillstash language    # Interactive prompt: English / 中文
+```
+
+Language can also be selected during `skillstash init`.
 
 ### `skillstash assign`
 
@@ -323,6 +359,7 @@ The hub splits state across two files:
 ```json
 {
   "lastSync": "2026-04-24T12:00:00Z",
+  "language": "en",
   "agents": {
     "claude": {
       "name": "claude",
@@ -334,7 +371,14 @@ The hub splits state across two files:
   },
   "agentSkills": {
     "claude": ["finance-ops", "git-commit"]
-  }
+  },
+  "customAgents": [
+    {
+      "name": "my-agent",
+      "skillsPath": "/custom/path/to/skills",
+      "linkType": "copy"
+    }
+  ]
 }
 ```
 
@@ -347,23 +391,31 @@ skillstash/
 │   ├── commands/
 │   │   ├── agents.ts         # skillstash agents
 │   │   ├── assign.ts         # skillstash assign
-│   │   ├── init.ts           # skillstash init <remote-url>
+│   │   ├── init.ts           # skillstash init [remote-url]
+│   │   ├── add-remote.ts     # skillstash add-remote <url>
 │   │   ├── install.ts        # skillstash install
 │   │   ├── link.ts           # skillstash link
 │   │   ├── list.ts           # skillstash list
 │   │   ├── sync.ts           # skillstash sync
 │   │   ├── diff.ts           # skillstash diff
 │   │   ├── remove.ts         # skillstash remove
-│   │   └── import.ts         # skillstash import
+│   │   ├── import.ts         # skillstash import
+│   │   └── language.ts       # skillstash language
 │   ├── core/
+│   │   ├── agents.ts         # Built-in agent definitions & plugin API
 │   │   ├── registry.ts       # Registry types & operations
 │   │   ├── hub.ts            # Hub directory management
 │   │   ├── git.ts            # Git operations
 │   │   ├── merge.ts          # Three-way registry merge
 │   │   └── skill.ts          # SKILL.md parsing & linting
+│   ├── i18n/
+│   │   ├── index.ts          # Locale management
+│   │   ├── en.ts             # English strings
+│   │   └── zh.ts             # Chinese strings
 │   └── utils/
 │       ├── fs.ts             # File system utilities
-│       ├── logger.ts         # Colored logging
+│       ├── lock.ts           # File-based lock (concurrent write guard)
+│       ├── logger.ts         # Colored logging with spinner & progress
 │       └── prompt.ts         # Interactive prompts (checkbox)
 ├── docs/
 │   └── images/               # Assets
