@@ -62,7 +62,7 @@ export async function selectSkillsForAgent(
 
   const choices = skills.map((s) => ({
     value: s.name,
-    name: `${s.name.padEnd(24)}${chalk.gray(s.version.padEnd(10))}${s.description ?? ''}`,
+    name: s.name,
     checked: currentAssignment === undefined ? true : currentAssignment.includes(s.name),
   }));
 
@@ -70,6 +70,7 @@ export async function selectSkillsForAgent(
     message: `为 ${chalk.cyan(agentName)} 选择要启用的 skill（空格切换，回车确认，a 全选，i 反选）`,
     choices,
     required: false,
+    pageSize: Math.min(skills.length, 20),
     shortcuts: { all: 'a', invert: 'i' },
   });
 }
