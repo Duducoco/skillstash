@@ -44,6 +44,7 @@ CLI (src/index.ts)
 ```
 
 Key command flows:
+- **default (no args)** — launch TUI (`src/commands/tui.ts`) → collect command + args interactively → delegate to commander
 - **`init`** — probe remote → detect agents → clone/init hub → auto-import → `link` → push
 - **`install`** — resolve source (ClawHub / GitHub shallow-clone / local path) → validate SKILL.md → copy to hub → update registry → commit
 - **`link`** — read registry → copy hub skills to each enabled agent directory (default: copy; alt: symlink/junction)
