@@ -3,10 +3,16 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Duducoco/skillstash/actions/workflows/ci.yml">
+    <img src="https://github.com/Duducoco/skillstash/actions/workflows/ci.yml/badge.svg" alt="CI Status"/>
+  </a>
+  <a href="https://github.com/Duducoco/skillstash/releases">
+    <img src="https://img.shields.io/github/v/release/Duducoco/skillstash?include_prereleases" alt="Release"/>
+  </a>
   <a href="https://www.npmjs.com/package/skillstash">
     <img src="https://img.shields.io/npm/dm/skillstash?logo=npm" alt="npm downloads"/>
   </a>
-  <a href="https://github.com/1mGee/skillstash/blob/main/LICENSE">
+  <a href="https://github.com/Duducoco/skillstash/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"/>
   </a>
 </p>
@@ -15,16 +21,22 @@
   One hub, all agents. Manage your AI agent skills in a single git-backed directory, and sync them to WorkBuddy, Codex, Claude Code, and more.
 </p>
 
+<p align="center">
+  <a href="./README.md">English</a> | <a href="./README_zh.md">中文</a>
+</p>
+
 ---
 
-## Overview
+## 📦 Overview
 
 skillstash is a CLI tool that centralizes your AI agent skills into a single git-backed hub. Install skills from ClawHub, GitHub, or local paths — then let skillstash copy them to every agent directory you use. Pull on one machine, sync everywhere.
 
 ```
 ~/.skillstash/skills-hub/ (git) ← Single source of truth
  ┌──────────────────────────┐
- │     registry.json        │  ← Tracks versions, hashes, agents
+ │     registry.json  (git) │  ← Skill metadata (shared across devices)
+ ├──────────────────────────┤
+ │     local.json (ignored) │  ← Agent config & assignments (per-device)
  └──────────────────────────┘
  ┌──────────────────────────┐
  │     skills/              │
@@ -45,7 +57,7 @@ skillstash is a CLI tool that centralizes your AI agent skills into a single git
 - **Agent-agnostic** — auto-detects installed agents, works with any combination
 - **Remote-first init** — `init` requires a remote Git URL, ensuring multi-device sync from day one
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 # Install globally
@@ -73,7 +85,7 @@ skillstash link
 skillstash sync
 ```
 
-## Multi-Device Sync
+## 🔄 Multi-Device Sync
 
 Since `init` requires a remote URL, multi-device sync is built in from the start:
 
@@ -90,7 +102,7 @@ skillstash init git@github.com:yourname/my-skills.git
 skillstash sync    # pull + verify + link + push
 ```
 
-### Conflict Resolution
+### ⚙️ Conflict Resolution
 
 `skillstash sync` handles merge conflicts automatically — no manual intervention required in most cases.
 
@@ -116,7 +128,7 @@ cd ~/.skillstash/skills-hub && git merge --abort
 skillstash sync
 ```
 
-## Command Reference
+## 📖 Command Reference
 
 ### `skillstash init <remote-url>`
 
@@ -236,7 +248,34 @@ skillstash agents disable codex     # Disable an agent (skip for link/sync)
 
 The `select` subcommand shows the same interactive checkbox UI as `init` — arrow keys to navigate, space to toggle, enter to confirm. Shortcuts: `a` to select all, `i` to invert selection.
 
-## Supported Agents
+### `skillstash assign`
+
+Configure which skills each agent receives **on the current device**, independently from every other device.
+
+```bash
+skillstash assign                   # Configure all enabled agents
+skillstash assign --agent claude    # Configure only a specific agent
+```
+
+Running the command opens a checkbox prompt for each agent. Items are pre-checked based on the previous assignment (or all-checked on first run). After confirming, you are prompted to apply the changes immediately with `link`.
+
+Assignments are stored in `local.json` (gitignored) and are completely independent per machine. Agents without an explicit assignment continue to receive all globally enabled skills — the new capability is entirely opt-in.
+
+**Example: different skills per device**
+
+```bash
+# On your workstation: claude gets coding tools only
+skillstash assign --agent claude
+# → select: git-commit, finance-ops
+
+# On your writing machine: claude gets document tools only
+skillstash assign --agent claude
+# → select: document-pdf, citation-management
+```
+
+Both machines share the same hub and sync the same skill files. Only the assignment differs.
+
+## 🤖 Supported Agents
 
 | Agent | Skills Directory | Auto-detected |
 |---|---|:---:|
@@ -248,52 +287,66 @@ The `select` subcommand shows the same interactive checkbox UI as `init` — arr
 
 All agents are auto-detected, but you can choose which ones to manage via `skillstash init` or `skillstash agents select`. Disabled agents are still detected but skipped during `link` and `sync`.
 
-## Registry Schema
+## 🗂️ Registry Schema
 
-The `registry.json` in the hub tracks everything:
+The hub splits state across two files:
+
+| File | Git-tracked | Contains |
+|---|:---:|---|
+| `registry.json` | ✅ | Skill metadata: name, version, hash, source URL |
+| `local.json` | ❌ | Agent config, skill assignments, last sync time |
+
+`local.json` is added to the hub's `.gitignore` automatically. This eliminates merge conflicts from device-specific state, and gives each device its own independent `assign` configuration.
+
+**`registry.json`** (shared across devices):
 
 ```json
 {
   "version": "1.0",
-  "lastSync": "2026-04-24T12:00:00Z",
   "skills": {
     "finance-ops": {
       "version": "1.0.0",
       "source": "github",
       "sourceUrl": "https://github.com/owner/repo",
       "hash": "sha256:abc123...",
-      "agents": ["workbuddy", "codex", "claude", "agents"],
       "enabled": true,
-      "description": "AI CFO assistant"
-    }
-  },
-  "agents": {
-    "workbuddy": {
-      "name": "workbuddy",
-      "skillsPath": "~/.workbuddy/skills",
-      "linkType": "copy",
-      "available": true,
-      "enabled": true
-    },
-    "codex": {
-      "name": "codex",
-      "skillsPath": "~/.codex/skills",
-      "linkType": "copy",
-      "available": true,
-      "enabled": false
+      "description": "AI CFO assistant",
+      "installedAt": "2026-04-24T12:00:00Z",
+      "updatedAt": "2026-04-24T12:00:00Z"
     }
   }
 }
 ```
 
-## Project Structure
+**`local.json`** (gitignored, per-device):
+
+```json
+{
+  "lastSync": "2026-04-24T12:00:00Z",
+  "agents": {
+    "claude": {
+      "name": "claude",
+      "skillsPath": "~/.claude/skills",
+      "linkType": "copy",
+      "available": true,
+      "enabled": true
+    }
+  },
+  "agentSkills": {
+    "claude": ["finance-ops", "git-commit"]
+  }
+}
+```
+
+## 🏗️ Project Structure
 
 ```
 skillstash/
 ├── src/
 │   ├── index.ts              # CLI entry point
 │   ├── commands/
-│   │   ├── agents.ts          # skillstash agents
+│   │   ├── agents.ts         # skillstash agents
+│   │   ├── assign.ts         # skillstash assign
 │   │   ├── init.ts           # skillstash init <remote-url>
 │   │   ├── install.ts        # skillstash install
 │   │   ├── link.ts           # skillstash link
@@ -305,12 +358,13 @@ skillstash/
 │   ├── core/
 │   │   ├── registry.ts       # Registry types & operations
 │   │   ├── hub.ts            # Hub directory management
-│   │   ├── git.ts            # Git operations (probe, clone, push, etc.)
+│   │   ├── git.ts            # Git operations
+│   │   ├── merge.ts          # Three-way registry merge
 │   │   └── skill.ts          # SKILL.md parsing & linting
 │   └── utils/
 │       ├── fs.ts             # File system utilities
 │       ├── logger.ts         # Colored logging
-│       └── prompt.ts         # Interactive agent selection (checkbox)
+│       └── prompt.ts         # Interactive prompts (checkbox)
 ├── docs/
 │   └── images/               # Assets
 ├── package.json
@@ -318,7 +372,7 @@ skillstash/
 └── README.md
 ```
 
-## Development
+## 🛠️ Development
 
 ```bash
 # Install dependencies
@@ -334,6 +388,6 @@ node dist/index.js --help
 npm run dev
 ```
 
-## License
+## 📄 License
 
 MIT
