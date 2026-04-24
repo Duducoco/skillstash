@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  One hub, all agents. Manage your AI agent skills in a single git-backed directory, and sync them to WorkBuddy, Codex, Claude Code, and more.
+  One hub, all agents. Manage your AI agent skills in a single git-backed directory, and sync them to Cursor, Gemini, Codex, Claude Code, and more.
 </p>
 
 <p align="center">
@@ -47,8 +47,8 @@ skillstash is a CLI tool that centralizes your AI agent skills into a single git
           │  skillstash link (copy)
     ┌─────┼──────┬──────────┐
     ▼     ▼      ▼          ▼
-   WB    Codex  Claude    Agents
- skills/ skills/ skills/  skills/
+ Gemini  Codex  Claude    Cursor
+ skills/ skills/ skills/ skills/
 ```
 
 **Design decisions:**
@@ -272,7 +272,7 @@ skillstash agents remove <name>     # Unregister a custom agent (built-ins canno
 
 The `select` subcommand shows the same interactive checkbox UI as `init` — arrow keys to navigate, space to toggle, enter to confirm. Shortcuts: `a` to select all, `i` to invert selection.
 
-**Custom agents** are registered with `agents add` and stored in `local.json` (device-local). Built-in agents (workbuddy, codebuddy, codex, claude, agents) cannot be removed, only enabled/disabled.
+**Custom agents** are registered with `agents add` and stored in `local.json` (device-local). Built-in agents cannot be removed, only enabled/disabled.
 
 ### `skillstash language`
 
@@ -315,11 +315,21 @@ Both machines share the same hub and sync the same skill files. Only the assignm
 
 | Agent | Skills Directory | Auto-detected |
 |---|---|:---:|
-| WorkBuddy | `~/.workbuddy/skills/` | ✅ |
-| CodeBuddy | `~/.codebuddy/skills/` | ✅ |
-| Codex | `~/.codex/skills/` | ✅ |
 | Claude Code | `~/.claude/skills/` | ✅ |
-| Agents (generic) | `~/.agents/skills/` | ✅ |
+| Codex CLI | `~/.codex/skills/` | ✅ |
+| Gemini CLI | `~/.gemini/skills/` | ✅ |
+| Cursor | `~/.cursor/skills-cursor/` | ✅ |
+| Kilo Code | `~/.kilocode/skills/` | ✅ |
+| TRAE (ByteDance) | `~/.trae/skills/` | ✅ |
+| Qoder (Alibaba) | `~/.qoder/skills/` | ✅ |
+| CodeBuddy (Tencent) | `~/.codebuddy/skills/` | ✅ |
+| Kimi Code | `~/.config/agents/skills/` | ✅ |
+| OpenClaw | `~/.openclaw/skills/` | ✅ |
+| Vercel Skills | `~/.agents/skills/` | ✅ |
+| OpenCode | `~/.opencode/skills/` | ✅ |
+| AntiGravity | `~/.gemini/antigravity/skills/` | ✅ |
+| Codes CLI | `~/.codes/skills/` | ✅ |
+| iFlow CLI | `~/.iflow/skills/` | ✅ |
 
 All agents are auto-detected, but you can choose which ones to manage via `skillstash init` or `skillstash agents select`. Disabled agents are still detected but skipped during `link` and `sync`.
 
