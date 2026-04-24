@@ -64,7 +64,7 @@ describe('agents add: persist custom agent to local.json', () => {
   });
 
   it('isBuiltinAgent returns true for all built-in names', () => {
-    const builtins = ['workbuddy', 'codebuddy', 'codex', 'claude', 'agents'];
+    const builtins = ['claude', 'codex', 'codebuddy', 'agents', 'gemini'];
     for (const name of builtins) {
       expect(isBuiltinAgent(name)).toBe(true);
     }
@@ -100,7 +100,7 @@ describe('agents remove: unregister custom agent', () => {
 
     const registry = loadRegistry(hubDir);
     // Builtin agents should still be present
-    const builtins = ['workbuddy', 'codebuddy', 'codex', 'claude', 'agents'];
+    const builtins = ['claude', 'codex', 'codebuddy', 'agents', 'gemini'];
     for (const name of builtins) {
       expect(registry.agents[name]).toBeDefined();
     }
