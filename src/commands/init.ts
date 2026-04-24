@@ -159,7 +159,7 @@ export function registerInitCommand(program: Command): void {
 /**
  * Case 1: Empty remote → create fresh hub, push to remote
  */
-async function initFreshHub(hubPath: string, remoteUrl: string): Promise<void> {
+export async function initFreshHub(hubPath: string, remoteUrl: string): Promise<void> {
   // Create hub structure
   const result = initHub(hubPath);
   if (!result.created) {
@@ -225,7 +225,7 @@ async function initFreshHub(hubPath: string, remoteUrl: string): Promise<void> {
 /**
  * Case 2: Non-empty remote with registry.json → clone + import agent skills
  */
-async function cloneAndImport(hubPath: string, remoteUrl: string): Promise<void> {
+export async function cloneAndImport(hubPath: string, remoteUrl: string): Promise<void> {
   // Ensure parent directory exists
   fs.mkdirSync(path.dirname(hubPath), { recursive: true });
 

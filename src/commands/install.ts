@@ -64,7 +64,7 @@ function installFromClawhub(slug: string): string | null {
 /**
  * Resolve skill source: ClawHub, local path, or GitHub
  */
-function resolveSkillSource(name: string): { type: 'clawhub' | 'local' | 'github'; path: string; slug?: string; url?: string; skillName?: string } | null {
+export function resolveSkillSource(name: string): { type: 'clawhub' | 'local' | 'github'; path: string; slug?: string; url?: string; skillName?: string } | null {
   // 1. ClawHub: clawhub:<slug> or @<slug>
   if (name.startsWith('clawhub:')) {
     const slug = name.slice('clawhub:'.length);
@@ -112,7 +112,7 @@ function resolveSkillSource(name: string): { type: 'clawhub' | 'local' | 'github
  * If skillName is provided, only that skill is searched.
  * If not, auto-detects the skill (single skill repos only).
  */
-function findGithubSkill(repoDir: string, skillName?: string): string | null {
+export function findGithubSkill(repoDir: string, skillName?: string): string | null {
   // 1. Specific skill requested
   if (skillName) {
     const candidates = [
@@ -248,7 +248,7 @@ export function registerInstallCommand(program: Command): void {
 /**
  * Common install logic: copy from source dir to hub, register, commit
  */
-async function installFromPath(
+export async function installFromPath(
   skillDir: string,
   hubPath: string,
   sourceType: 'local' | 'clawhub' | 'github',

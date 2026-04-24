@@ -3,4 +3,5 @@ dist/
 *.js.map
 *.d.ts
 *.d.ts.map
-.*
+.claude
+.spec-workflow
