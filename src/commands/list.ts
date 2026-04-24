@@ -5,6 +5,7 @@ import { hubExists, getSkillsPath, loadRegistry, getDefaultHubPath } from '../co
 import { exists } from '../utils/fs.js';
 import { getSkillVersion, getSkillDescription } from '../core/skill.js';
 import { logger } from '../utils/logger.js';
+import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
@@ -43,7 +44,7 @@ export function registerListCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
@@ -52,19 +53,19 @@ export function registerListCommand(program: Command): void {
       const skillNames = Object.keys(registry.skills);
 
       if (skillNames.length === 0) {
-        logger.info('No skills installed yet. Use `skillstash install <name>` to add one.');
+        logger.info(t('list.noSkills'));
         return;
       }
 
       // Header
-      logger.info(chalk.bold('\n  Installed Skills\n'));
+      logger.info(chalk.bold(`\n  ${t('list.installedHeader')}\n`));
       logger.info(
         chalk.gray('  ' +
-          'Name'.padEnd(28) +
-          'Version'.padEnd(10) +
-          'Source'.padEnd(14) +
-          'Agents'.padEnd(20) +
-          'Status'
+          padVis(t('list.colName'), 28) +
+          padVis(t('list.colVersion'), 10) +
+          padVis(t('list.colSource'), 14) +
+          padVis(t('list.colAgents'), 20) +
+          t('list.colStatus')
         )
       );
       logger.info(chalk.gray('  ' + '─'.repeat(102)));
@@ -82,7 +83,7 @@ export function registerListCommand(program: Command): void {
               const agentSkillDir = path.join(agent.skillsPath, name);
               return exists(agentSkillDir) ? chalk.green(a) : chalk.red(a);
             }).join(', ')
-          : chalk.gray('none');
+          : chalk.gray(t('list.noneAgents'));
 
         const line = '  ' +
           padVis(chalk.bold(name), 28) +
@@ -102,14 +103,14 @@ export function registerListCommand(program: Command): void {
 
       // Agent summary
       const agents = Object.values(registry.agents);
-      logger.info(chalk.bold('  Agents\n'));
+      logger.info(chalk.bold(`  ${t('list.agentsHeader')}\n`));
       for (const agent of agents) {
         const availStatus = agent.available
-          ? chalk.green('✓ available')
-          : chalk.gray('✗ not found');
+          ? chalk.green(t('common.agentAvailable'))
+          : chalk.gray(t('common.agentNotFound'));
         const managedStatus = agent.enabled
-          ? chalk.green('✓ managed')
-          : chalk.yellow('✗ disabled');
+          ? chalk.green(t('common.agentManaged'))
+          : chalk.yellow(t('common.agentDisabled'));
         const agentSkills = agent.available && exists(agent.skillsPath)
           ? fs.readdirSync(agent.skillsPath, { withFileTypes: true })
               .filter((d) => d.isDirectory())

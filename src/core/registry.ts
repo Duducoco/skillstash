@@ -99,8 +99,9 @@ export interface LocalState {
   agents: Record<string, AgentConfig>;
   skillAgents: Record<string, string[]>;
   agentSkills?: Record<string, string[]>;
+  language?: 'en' | 'zh';
 }
 
 export function createEmptyLocalState(): LocalState {
-  return { lastSync: null, agents: {}, skillAgents: {}, agentSkills: {} };
+  return { lastSync: null, agents: {}, skillAgents: {}, agentSkills: {}, language: 'en' };
 }

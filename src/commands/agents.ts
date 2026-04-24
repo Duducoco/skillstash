@@ -3,6 +3,7 @@ import { hubExists, loadRegistry, saveRegistry, getDefaultHubPath, detectAgents 
 import { setAgentEnabled, addAgentToRegistry, AgentConfig } from '../core/registry.js';
 import { selectAgents } from '../utils/prompt.js';
 import { logger } from '../utils/logger.js';
+import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 export function registerAgentsCommand(program: Command): void {
@@ -18,7 +19,7 @@ export function registerAgentsCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
@@ -26,18 +27,18 @@ export function registerAgentsCommand(program: Command): void {
       const agents = Object.values(registry.agents);
 
       if (agents.length === 0) {
-        logger.info('No agents registered.');
+        logger.info(t('agents.noAgentsRegistered'));
         return;
       }
 
-      logger.info(chalk.bold('\n  Agents\n'));
+      logger.info(chalk.bold(`\n  ${t('agents.header')}\n`));
       for (const agent of agents) {
         const availStatus = agent.available
-          ? chalk.green('✓ available')
-          : chalk.gray('✗ not found');
+          ? chalk.green(t('common.agentAvailable'))
+          : chalk.gray(t('common.agentNotFound'));
         const managedStatus = agent.enabled
-          ? chalk.green('✓ managed')
-          : chalk.yellow('✗ disabled');
+          ? chalk.green(t('common.agentManaged'))
+          : chalk.yellow(t('common.agentDisabled'));
         logger.info(`  ${chalk.bold(agent.name.padEnd(14))} ${availStatus}  ${managedStatus}  ${chalk.gray(agent.skillsPath)}`);
       }
       logger.info('');
@@ -50,7 +51,7 @@ export function registerAgentsCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
@@ -77,7 +78,7 @@ export function registerAgentsCommand(program: Command): void {
 
       const enabledCount = Object.values(registry.agents).filter((a) => a.enabled).length;
       const total = Object.keys(registry.agents).length;
-      logger.success(`Managing ${enabledCount} of ${total} agent(s)`);
+      logger.success(t('agents.managingCount', { enabled: enabledCount, total }));
     });
 
   agentsCmd
@@ -87,21 +88,21 @@ export function registerAgentsCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
       const registry = loadRegistry(hubPath);
 
       if (!registry.agents[name]) {
-        logger.error(`Agent "${name}" not found in registry.`);
-        logger.info('  Available agents: ' + Object.keys(registry.agents).join(', '));
+        logger.error(t('common.agentNotInRegistry', { name }));
+        logger.info(t('common.availableAgents', { list: Object.keys(registry.agents).join(', ') }));
         return;
       }
 
       setAgentEnabled(registry, name, true);
       saveRegistry(registry, hubPath);
-      logger.success(`Agent "${chalk.bold(name)}" is now managed`);
+      logger.success(t('agents.agentNowManaged', { name: chalk.bold(name) }));
     });
 
   agentsCmd
@@ -111,20 +112,20 @@ export function registerAgentsCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
       const registry = loadRegistry(hubPath);
 
       if (!registry.agents[name]) {
-        logger.error(`Agent "${name}" not found in registry.`);
-        logger.info('  Available agents: ' + Object.keys(registry.agents).join(', '));
+        logger.error(t('common.agentNotInRegistry', { name }));
+        logger.info(t('common.availableAgents', { list: Object.keys(registry.agents).join(', ') }));
         return;
       }
 
       setAgentEnabled(registry, name, false);
       saveRegistry(registry, hubPath);
-      logger.success(`Agent "${chalk.bold(name)}" is now disabled (will be skipped for link/sync)`);
+      logger.success(t('agents.agentNowDisabled', { name: chalk.bold(name) }));
     });
 }

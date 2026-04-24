@@ -6,6 +6,7 @@ import { copyDirRecursive, removeDir, ensureDir, exists } from '../utils/fs.js';
 import { selectSkillsForAgent, promptLinkNow } from '../utils/prompt.js';
 import { gitCommit } from '../core/git.js';
 import { logger } from '../utils/logger.js';
+import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 export function registerAssignCommand(program: Command): void {
@@ -17,7 +18,7 @@ export function registerAssignCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
@@ -30,9 +31,9 @@ export function registerAssignCommand(program: Command): void {
 
       if (targetAgents.length === 0) {
         if (options.agent) {
-          logger.error(`Agent "${options.agent}" not found or not enabled. Run \`skillstash agents list\` to see available agents.`);
+          logger.error(t('assign.agentNotFoundOrEnabled', { name: options.agent }));
         } else {
-          logger.warn('No available agents to configure. Run `skillstash agents select` to add agents.');
+          logger.warn(t('assign.noAgentsToConfigure'));
         }
         return;
       }
@@ -43,11 +44,11 @@ export function registerAssignCommand(program: Command): void {
         .map(([name, meta]) => ({ name, version: meta.version, description: meta.description }));
 
       if (enabledSkills.length === 0) {
-        logger.warn('No enabled skills in hub. Install some skills first with `skillstash install`.');
+        logger.warn(t('assign.noEnabledSkills'));
         return;
       }
 
-      logger.info(`配置本设备的 skill 分配（${enabledSkills.length} 个可用 skill）\n`);
+      logger.info(t('assign.configuringHeader', { count: enabledSkills.length }) + '\n');
 
       // Interactive selection for each agent
       for (const agent of targetAgents) {
@@ -59,21 +60,21 @@ export function registerAssignCommand(program: Command): void {
       }
 
       saveRegistry(registry, hubPath);
-      logger.success('\n配置已保存到本设备（local.json）');
+      logger.success(t('assign.assignmentSaved'));
 
       // Summarise per agent
       for (const agent of targetAgents) {
         const assigned = registry.agentSkills[agent.name] ?? [];
-        logger.info(`  ${chalk.cyan(agent.name)}: ${assigned.length} 个 skill`);
+        logger.info(t('assign.agentSkillCount', { agent: chalk.cyan(agent.name), count: assigned.length }));
       }
 
-      logger.info('\n运行 `skillstash link` 将更改应用到 agent 目录。');
+      logger.info(t('assign.runLinkHint'));
 
       // Optionally run link now
       const runLink = await promptLinkNow();
       if (!runLink) return;
 
-      logger.step('\n链接 skill 到 agent 目录...');
+      logger.step(t('assign.linkingSkills'));
       const skillsDir = getSkillsPath(hubPath);
       let totalLinked = 0;
 
@@ -101,13 +102,13 @@ export function registerAssignCommand(program: Command): void {
             }
             totalLinked++;
           } catch (e) {
-            logger.error(`  ${agent.name}/${skillName}: ${(e as Error).message}`);
+            logger.error(t('common.skillLinkError', { agent: agent.name, skill: skillName, message: (e as Error).message }));
           }
         }
       }
 
       saveRegistry(registry, hubPath);
       gitCommit(hubPath, 'assign: update skill assignments');
-      logger.success(`已链接 ${totalLinked} 个 skill`);
+      logger.success(t('assign.linkedSkills', { count: totalLinked }));
     });
 }

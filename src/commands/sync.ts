@@ -13,6 +13,7 @@ import { mergeSharedRegistries } from '../core/merge.js';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { logger } from '../utils/logger.js';
+import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 export function registerSyncCommand(program: Command): void {
@@ -27,7 +28,7 @@ export function registerSyncCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
@@ -37,21 +38,21 @@ export function registerSyncCommand(program: Command): void {
       if (options.pull && hasRemote(hubPath)) {
         // Abort if repo is already stuck in a MERGING state
         if (gitIsInMergeState(hubPath)) {
-          logger.error(`Hub 存在未解决的合并冲突，请手动处理后重试：\n  cd "${hubPath}" && git merge --abort`);
+          logger.error(t('sync.unresolvedConflicts', { path: hubPath }));
           return;
         }
 
         // Auto-commit any local uncommitted changes before fetching
         const dirty = gitStatus(hubPath);
         if (dirty && dirty.trim().length > 0) {
-          logger.info('检测到未提交的本地改动，自动提交...');
+          logger.info(t('sync.autoCommitting'));
           gitCommit(hubPath, 'sync: auto-commit local changes before pull');
         }
 
-        logger.step('从远端拉取更新...');
+        logger.step('Fetching remote updates...');
         const fetched = gitFetch(hubPath);
         if (!fetched) {
-          logger.warn('Git fetch 失败，继续使用本地状态');
+          logger.warn(t('sync.fetchFailed'));
         } else {
           const remoteAhead = gitRevCount(hubPath, 'HEAD', 'FETCH_HEAD');
           const localAhead  = gitRevCount(hubPath, 'FETCH_HEAD', 'HEAD');
@@ -62,13 +63,13 @@ export function registerSyncCommand(program: Command): void {
             // Clean fast-forward — no conflict possible
             if (gitMergeFFOnly(hubPath)) {
               Object.assign(registry, loadRegistry(hubPath));
-              logger.success('已拉取最新改动（快进合并）');
+              logger.success(t('sync.fastForwardComplete'));
             } else {
-              logger.warn('快进合并失败，继续使用本地状态');
+              logger.warn(t('sync.fastForwardFailed'));
             }
           } else {
             // Both sides diverged — smart three-way merge
-            logger.step('检测到分叉，执行三路合并...');
+            logger.step(t('sync.divergedHistories'));
             const mergeBase   = gitMergeBase(hubPath);
             const baseJson    = mergeBase ? gitShowFileContent(hubPath, mergeBase, 'registry.json') : null;
             const theirsJson  = gitShowFileContent(hubPath, 'FETCH_HEAD', 'registry.json');
@@ -80,7 +81,7 @@ export function registerSyncCommand(program: Command): void {
             const { mergedSkills, resolutions, winnerMap } = mergeSharedRegistries(base, oursRaw, theirs);
 
             if (resolutions.length > 0) {
-              logger.info(`自动解决 ${resolutions.length} 个技能冲突：`);
+              logger.info(t('sync.autoResolved', { count: resolutions.length }));
               for (const r of resolutions) {
                 logger.step(`  ${r.skill}: ${r.reason}`);
               }
@@ -111,20 +112,20 @@ export function registerSyncCommand(program: Command): void {
             const committed = gitCommitMerge(hubPath, 'sync: merge remote changes');
             if (!committed) {
               gitMergeAbort(hubPath);
-              logger.error('合并提交失败，已自动撤销合并。请检查 hub 状态后重试。');
+              logger.error(t('sync.mergeCommitFailed'));
               return;
             }
 
             Object.assign(registry, loadRegistry(hubPath));
-            logger.success(`合并完成${resolutions.length ? `（自动解决 ${resolutions.length} 个冲突）` : ''}`);
+            logger.success(resolutions.length ? t('sync.mergeCompleteWithResolutions', { count: resolutions.length }) : t('sync.mergeComplete'));
           }
         }
       } else if (options.pull && !hasRemote(hubPath)) {
-        logger.info('未配置远端，跳过拉取');
+        logger.info(t('sync.noRemote'));
       }
 
       // Step 2: Verify hub integrity
-      logger.step('Verifying hub integrity...');
+      logger.step(t('sync.verifyingIntegrity'));
       const skillsDir = getSkillsPath(hubPath);
       const skillNames = Object.keys(registry.skills);
       let issues = 0;
@@ -132,14 +133,14 @@ export function registerSyncCommand(program: Command): void {
       for (const name of skillNames) {
         const skillDir = path.join(skillsDir, name);
         if (!exists(skillDir)) {
-          logger.warn(`  ${name}: directory missing in hub, removing from registry`);
+          logger.warn(t('sync.skillDirMissing', { name }));
           removeSkillFromRegistry(registry, name);
           issues++;
           continue;
         }
         const currentHash = hashDir(skillDir);
         if (currentHash !== registry.skills[name].hash) {
-          logger.step(`  ${name}: content changed, updating hash`);
+          logger.step(t('sync.skillHashChanged', { name }));
           updateSkillInRegistry(registry, name, { hash: currentHash });
           issues++;
         }
@@ -153,7 +154,7 @@ export function registerSyncCommand(program: Command): void {
 
         for (const name of onDisk) {
           if (!registry.skills[name]) {
-            logger.step(`  ${name}: found on disk but not in registry, adding`);
+            logger.step(t('sync.skillFoundOnDisk', { name }));
             const { getSkillVersion, getSkillDescription } = await import('../core/skill.js');
             const skillDir = path.join(skillsDir, name);
             registry.skills[name] = {
@@ -175,7 +176,7 @@ export function registerSyncCommand(program: Command): void {
         saveRegistry(registry, hubPath);
         gitCommit(hubPath, `sync: auto-fix ${issues} issue(s)`);
       } else {
-        logger.success('Hub integrity OK');
+        logger.success(t('sync.integrityOk'));
       }
 
       // Step 3: Link to agents
@@ -184,11 +185,11 @@ export function registerSyncCommand(program: Command): void {
         const enabledSkills = skillNames.filter((s) => registry.skills[s].enabled);
 
         if (agents.length === 0) {
-          logger.warn('No available agents to link to');
+          logger.warn(t('sync.noAgentsToLink'));
         } else if (enabledSkills.length === 0) {
-          logger.warn('No enabled skills to link');
+          logger.warn(t('sync.noSkillsToLink'));
         } else {
-          logger.step('Linking skills to agents...');
+          logger.step(t('sync.linkingSkills'));
           let totalLinked = 0;
 
           for (const agent of agents) {
@@ -217,7 +218,7 @@ export function registerSyncCommand(program: Command): void {
                 }
                 totalLinked++;
               } catch (e) {
-                logger.error(`  ${agent.name}/${skillName}: ${(e as Error).message}`);
+                logger.error(t('common.skillLinkError', { agent: agent.name, skill: skillName, message: (e as Error).message }));
               }
             }
 
@@ -228,7 +229,7 @@ export function registerSyncCommand(program: Command): void {
                 .map((d) => d.name);
               for (const entry of agentDirEntries) {
                 if (!agentSkillList.includes(entry)) {
-                  logger.step(`  Removing unmanaged: ${agent.name}/${entry}`);
+                  logger.step(t('common.removingUnmanaged', { agent: agent.name, skill: entry }));
                   removeDir(path.join(agent.skillsPath, entry));
                 }
               }
@@ -236,15 +237,15 @@ export function registerSyncCommand(program: Command): void {
           }
 
           saveRegistry(registry, hubPath);
-          logger.success(`Linked ${totalLinked} skill(s) to ${agents.length} agent(s)`);
+          logger.success(t('common.linkedSkillsAgents', { count: totalLinked, agents: agents.length }));
         }
       }
 
       // Step 4: Git push
       if (options.push && hasRemote(hubPath)) {
-        logger.step('Pushing to remote...');
+        logger.step(t('common.pushing'));
         if (gitPush(hubPath)) {
-          logger.success('Pushed to remote');
+          logger.success(t('common.pushed'));
         }
       }
 
@@ -252,6 +253,6 @@ export function registerSyncCommand(program: Command): void {
       registry.lastSync = new Date().toISOString();
       saveRegistry(registry, hubPath);
 
-      logger.info(`\n${chalk.green('Sync complete!')} Last sync: ${registry.lastSync}`);
+      logger.info(t('sync.syncComplete', { time: registry.lastSync ?? '' }));
     });
 }

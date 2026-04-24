@@ -6,6 +6,7 @@ import { copyDirRecursive, removeDir, ensureDir, exists } from '../utils/fs.js';
 import { updateSkillInRegistry } from '../core/registry.js';
 import { gitCommit } from '../core/git.js';
 import { logger } from '../utils/logger.js';
+import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 export function registerLinkCommand(program: Command): void {
@@ -19,7 +20,7 @@ export function registerLinkCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
@@ -33,7 +34,7 @@ export function registerLinkCommand(program: Command): void {
         : agents.filter((a) => a.available && a.enabled);
 
       if (targetAgents.length === 0) {
-        logger.warn('No available agents to link to');
+        logger.warn(t('link.noAgentsToLink'));
         return;
       }
 
@@ -44,7 +45,7 @@ export function registerLinkCommand(program: Command): void {
       }
 
       if (skillNames.length === 0) {
-        logger.warn('No skills to link');
+        logger.warn(t('link.noSkillsToLink'));
         return;
       }
 
@@ -65,7 +66,7 @@ export function registerLinkCommand(program: Command): void {
           const destDir = path.join(agent.skillsPath, skillName);
 
           if (!exists(srcDir)) {
-            logger.warn(`  ✗ ${skillName}: source not found in hub`);
+            logger.warn(t('link.skillSourceMissing', { skill: skillName }));
             continue;
           }
 
@@ -104,7 +105,7 @@ export function registerLinkCommand(program: Command): void {
           for (const entry of agentDirEntries) {
             if (!agentSkillNames.includes(entry)) {
               const removePath = path.join(agent.skillsPath, entry);
-              logger.step(`  Removing unmanaged skill: ${entry}`);
+              logger.step(t('link.removingUnmanaged', { name: entry }));
               removeDir(removePath);
             }
           }
@@ -112,6 +113,6 @@ export function registerLinkCommand(program: Command): void {
       }
 
       saveRegistry(registry, hubPath);
-      logger.info(`\n${chalk.green(`Linked ${totalLinked} skill(s) to ${targetAgents.length} agent(s)`)}`);
+      logger.info(t('link.linked', { count: totalLinked, agents: targetAgents.length }));
     });
 }

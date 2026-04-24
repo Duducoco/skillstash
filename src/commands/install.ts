@@ -9,6 +9,7 @@ import { copyDirRecursive, hashDir, exists } from '../utils/fs.js';
 import { getSkillName, getSkillVersion, getSkillDescription, lintSkill } from '../core/skill.js';
 import { gitCommit, gitShallowClone, gitAvailable } from '../core/git.js';
 import { logger } from '../utils/logger.js';
+import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 /**
@@ -31,7 +32,7 @@ function installFromClawhub(slug: string): string | null {
   const tmpDir = path.join(os.tmpdir(), `skillstash-clawhub-${Date.now()}`);
 
   try {
-    logger.step(`  Downloading from ClawHub: ${chalk.bold(slug)}`);
+    logger.step(t('install.downloadingFromClawhub', { slug: chalk.bold(slug) }));
     execSync(`clawhub install "${slug}" --workdir "${tmpDir}" --dir skills`, {
       stdio: 'pipe',
       timeout: 60_000,
@@ -49,14 +50,14 @@ function installFromClawhub(slug: string): string | null {
           return path.join(skillsDir, entries[0].name);
         }
       }
-      logger.error(`ClawHub installed but no SKILL.md found for "${slug}"`);
+      logger.error(t('install.clawhubNoSkillMd', { slug }));
       return null;
     }
 
     return skillDir;
   } catch (e) {
-    logger.error(`ClawHub install failed: ${(e as Error).message}`);
-    logger.info('  Make sure you are logged in: clawhub login');
+    logger.error(t('install.clawhubInstallFailed', { message: (e as Error).message }));
+    logger.info(t('install.clawhubLoginCmd'));
     return null;
   }
 }
@@ -69,7 +70,7 @@ export function resolveSkillSource(name: string): { type: 'clawhub' | 'local' | 
   if (name.startsWith('clawhub:')) {
     const slug = name.slice('clawhub:'.length);
     if (!slug) {
-      logger.error('ClawHub slug is empty. Usage: skillstash install clawhub:<slug>');
+      logger.error(t('install.slugEmpty'));
       return null;
     }
     return { type: 'clawhub', path: '', slug };
@@ -81,7 +82,7 @@ export function resolveSkillSource(name: string): { type: 'clawhub' | 'local' | 
     if (fs.existsSync(path.join(resolved, 'SKILL.md'))) {
       return { type: 'local', path: resolved };
     }
-    logger.error(`No SKILL.md found at ${resolved}`);
+    logger.error(t('install.noSkillMdAtPath', { path: resolved }));
     return null;
   }
 
@@ -94,11 +95,11 @@ export function resolveSkillSource(name: string): { type: 'clawhub' | 'local' | 
     return { type: 'github', path: '', url, skillName };
   }
 
-  logger.error(`Skill "${name}" not found. Provide a ClawHub slug, local path, or GitHub repo.`);
-  logger.info('  Examples:');
-  logger.info('    skillstash install clawhub:finance-ops');
-  logger.info('    skillstash install ./my-skill');
-  logger.info('    skillstash install user/repo@skill-name');
+  logger.error(t('install.skillSourceNotFound', { name }));
+  logger.info(t('install.exampleInstalls'));
+  logger.info(t('install.exampleClawhub'));
+  logger.info(t('install.exampleLocal'));
+  logger.info(t('install.exampleGithub'));
   return null;
 }
 
@@ -122,7 +123,7 @@ export function findGithubSkill(repoDir: string, skillName?: string): string | n
     for (const c of candidates) {
       if (fs.existsSync(path.join(c, 'SKILL.md'))) return c;
     }
-    logger.error(`Skill "${skillName}" not found in repo. Searched:`);
+    logger.error(t('install.skillNotFoundInRepo', { name: skillName }));
     for (const c of candidates) logger.error(`  ${c}`);
     return null;
   }
@@ -144,11 +145,11 @@ export function findGithubSkill(repoDir: string, skillName?: string): string | n
     }
 
     if (entries.length > 1) {
-      logger.error('Multiple skills found in repo. Specify which one:');
+      logger.error(t('install.multipleSkillsFound'));
       for (const e of entries) {
         logger.info(`  ${e.name}`);
       }
-      logger.info(`\n  Usage: skillstash install owner/repo@${entries[0].name}`);
+      logger.info(t('install.usageInstallRepo', { example: entries[0].name }));
       return null;
     }
   }
@@ -162,16 +163,16 @@ export function findGithubSkill(repoDir: string, skillName?: string): string | n
   }
 
   if (topDirs.length > 1) {
-    logger.error('Multiple skills found in repo. Specify which one:');
+    logger.error(t('install.multipleSkillsFound'));
     for (const d of topDirs) {
       logger.info(`  ${d.name}`);
     }
-    logger.info(`\n  Usage: skillstash install owner/repo@${topDirs[0].name}`);
+    logger.info(t('install.usageInstallRepo', { example: topDirs[0].name }));
     return null;
   }
 
-  logger.error('No SKILL.md found in this repository');
-  logger.info('  If the skill is in a subdirectory, use: owner/repo@skill-name');
+  logger.error(t('install.noSkillMdInRepo'));
+  logger.info(t('install.subdirHint'));
   return null;
 }
 
@@ -184,20 +185,20 @@ export function registerInstallCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init <remote-url>` first.');
+        logger.error(t('common.hubNotInitializedWithUrl'));
         return;
       }
 
-      logger.step(`Resolving skill source for "${chalk.bold(skillName)}"`);
+      logger.step(t('install.resolvingSource', { name: chalk.bold(skillName) }));
       const source = resolveSkillSource(skillName);
       if (!source) return;
 
       // Handle ClawHub source
       if (source.type === 'clawhub') {
         if (!clawhubAvailable()) {
-          logger.error('ClawHub CLI not found. Install it first:');
-          logger.info('  npm install -g clawhub');
-          logger.info('  Then login: clawhub login');
+          logger.error(t('install.clawhubCliNotFound'));
+          logger.info(t('install.clawhubInstallCmd'));
+          logger.info(t('install.clawhubLoginCmd'));
           return;
         }
         const skillDir = installFromClawhub(source.slug!);
@@ -219,11 +220,11 @@ export function registerInstallCommand(program: Command): void {
       // Handle GitHub source
       if (source.type === 'github') {
         if (!gitAvailable()) {
-          logger.error('Git not found. GitHub installation requires git.');
+          logger.error(t('install.gitNotFound'));
           return;
         }
 
-        logger.step(`  Cloning from GitHub: ${chalk.bold(source.url!)}`);
+        logger.step(t('install.cloningFromGithub', { url: chalk.bold(source.url!) }));
         const tmpDir = gitShallowClone(source.url!);
         if (!tmpDir) return;
 
@@ -260,7 +261,7 @@ export async function installFromPath(
   if (options.lint) {
     const lintResult = lintSkill(skillDir);
     if (!lintResult.valid) {
-      logger.error('SKILL.md validation failed:');
+      logger.error(t('install.lintFailed'));
       for (const err of lintResult.errors) {
         logger.error(`  ✖ ${err}`);
       }
@@ -285,9 +286,9 @@ export async function installFromPath(
   const isUpdate = !!registry.skills[name];
 
   if (isUpdate) {
-    logger.step(`Updating existing skill: ${chalk.bold(name)}`);
+    logger.step(t('install.updatingSkill', { name: chalk.bold(name) }));
   } else {
-    logger.step(`Installing skill: ${chalk.bold(name)} v${version}`);
+    logger.step(t('install.installingSkill', { name: chalk.bold(name), version }));
   }
 
   copyDirRecursive(skillDir, destDir);
@@ -314,7 +315,7 @@ export async function installFromPath(
 
   saveRegistry(registry, hubPath);
   gitCommit(hubPath, `install: ${name} v${version}`);
-  logger.success(`Installed ${chalk.bold(name)} v${version} from ${sourceType}`);
+  logger.success(t('install.installed', { name: chalk.bold(name), version, source: sourceType }));
   if (description) {
     logger.info(`  ${chalk.gray(description)}`);
   }

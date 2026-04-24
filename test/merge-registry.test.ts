@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mergeSharedRegistries } from '../src/core/merge.js';
+import '../src/i18n/en.js';
+import '../src/i18n/zh.js';
 
 function skill(overrides: Record<string, any> = {}) {
   return {
@@ -60,7 +62,7 @@ describe('mergeSharedRegistries', () => {
     );
     expect(result.winnerMap['foo']).toBe('ours');
     expect(result.mergedSkills['foo'].hash).toBe('ours');
-    expect(result.resolutions[0].reason).toBe('本地版本更新');
+    expect(result.resolutions[0].reason).toBe('local version is newer');
   });
 
   it('远端 updatedAt 更新时采用远端', () => {
@@ -75,7 +77,7 @@ describe('mergeSharedRegistries', () => {
     );
     expect(result.winnerMap['foo']).toBe('theirs');
     expect(result.mergedSkills['foo'].hash).toBe('theirs');
-    expect(result.resolutions[0].reason).toBe('远端版本更新');
+    expect(result.resolutions[0].reason).toBe('remote version is newer');
   });
 
   it('远端删除、本地未改时跟随删除', () => {
@@ -87,7 +89,7 @@ describe('mergeSharedRegistries', () => {
     );
     expect(result.mergedSkills['foo']).toBeUndefined();
     expect(result.winnerMap['foo']).toBe('deleted');
-    expect(result.resolutions[0].reason).toBe('远端已删除');
+    expect(result.resolutions[0].reason).toBe('deleted by remote');
   });
 
   it('远端删除但本地改动时保留本地', () => {
@@ -100,7 +102,7 @@ describe('mergeSharedRegistries', () => {
     );
     expect(result.mergedSkills['foo']).toBeDefined();
     expect(result.winnerMap['foo']).toBe('ours');
-    expect(result.resolutions[0].reason).toBe('远端已删除，本地有改动，保留本地');
+    expect(result.resolutions[0].reason).toBe('remote deleted but local has changes, keeping local');
   });
 
   it('本地删除、远端未改时跟随删除', () => {
@@ -112,7 +114,7 @@ describe('mergeSharedRegistries', () => {
     );
     expect(result.mergedSkills['foo']).toBeUndefined();
     expect(result.winnerMap['foo']).toBe('deleted');
-    expect(result.resolutions[0].reason).toBe('本地已删除');
+    expect(result.resolutions[0].reason).toBe('deleted by local');
   });
 
   it('本地删除但远端有改动时采用远端', () => {
@@ -125,7 +127,7 @@ describe('mergeSharedRegistries', () => {
     );
     expect(result.mergedSkills['foo']).toBeDefined();
     expect(result.winnerMap['foo']).toBe('theirs');
-    expect(result.resolutions[0].reason).toBe('本地已删除，远端有改动，采用远端');
+    expect(result.resolutions[0].reason).toBe('local deleted but remote has changes, taking remote');
   });
 
   it('base 为 null 时两端技能全部保留', () => {
@@ -148,6 +150,6 @@ describe('mergeSharedRegistries', () => {
       { skills: { foo: theirs } },
     );
     expect(result.winnerMap['foo']).toBe('ours');
-    expect(result.resolutions[0].reason).toBe('时间戳相同，保留本地');
+    expect(result.resolutions[0].reason).toBe('same timestamp, keeping local');
   });
 });

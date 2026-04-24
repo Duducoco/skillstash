@@ -1,13 +1,15 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { Command } from 'commander';
-import { initHub, hubExists, getDefaultHubPath, loadRegistry, saveRegistry, detectAgents, getSkillsPath } from '../core/hub.js';
+import { initHub, hubExists, getDefaultHubPath, loadRegistry, saveRegistry, detectAgents, getSkillsPath, loadLocalState, saveLocalState } from '../core/hub.js';
 import { addSkillToRegistry, setAgentEnabled } from '../core/registry.js';
 import { selectAgents, promptLinkNow } from '../utils/prompt.js';
 import { gitInit, gitProbeRemote, gitClone, gitAddRemote, gitPushSetUpstream, gitCommit } from '../core/git.js';
 import { copyDirRecursive, hashDir, exists, ensureDir, removeDir } from '../utils/fs.js';
 import { getSkillVersion, getSkillDescription, lintSkill } from '../core/skill.js';
 import { logger } from '../utils/logger.js';
+import { select } from '@inquirer/prompts';
+import { setLocale, type Locale, t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 interface DiscoveredSkill {
@@ -84,11 +86,11 @@ function importDiscoveredSkills(hubPath: string, registry: ReturnType<typeof loa
     // Lint
     const lintResult = lintSkill(skill.sourcePath);
     if (!lintResult.valid) {
-      logger.warn(`  Skipping ${name}: SKILL.md validation failed`);
+      logger.warn(t('common.skippingLintFailed', { name }));
       continue;
     }
 
-    logger.step(`  Importing ${chalk.bold(name)}`);
+    logger.step(t('init.importingSkill', { name: chalk.bold(name) }));
     copyDirRecursive(skill.sourcePath, destDir);
 
     const version = getSkillVersion(destDir);
@@ -117,43 +119,62 @@ export function registerInitCommand(program: Command): void {
     .action(async (remoteUrl: string) => {
       const hubPath = getDefaultHubPath();
 
+      // ── Language selection: MUST be first, before any logger call ──
+      let selectedLang: Locale = 'en';
+      if (process.stdin.isTTY && process.stdout.isTTY) {
+        selectedLang = await select<Locale>({
+          message: t('prompt.selectLanguage'),
+          choices: [
+            { value: 'en', name: 'English' },
+            { value: 'zh', name: '中文' },
+          ],
+        });
+      }
+      setLocale(selectedLang);
+      // ── End language selection ──
+
       // Check if hub already exists
       if (hubExists(hubPath)) {
-        logger.warn(`Skills hub already exists at ${chalk.cyan(hubPath)}`);
+        logger.warn(t('init.alreadyExists', { path: hubPath }));
         const reg = loadRegistry(hubPath);
-        logger.info(`  Skills: ${Object.keys(reg.skills).length}, Agents: ${Object.keys(reg.agents).length}`);
-        logger.info(`  Use ${chalk.cyan('skillstash sync')} to update, or delete the hub directory to re-initialize.`);
+        logger.info(t('init.alreadyExistsStats', { skills: Object.keys(reg.skills).length, agents: Object.keys(reg.agents).length }));
+        logger.info(t('init.alreadyExistsHint'));
         return;
       }
 
       // Step 1: Probe the remote
-      logger.step(`Probing remote repository: ${chalk.cyan(remoteUrl)}`);
+      logger.step(t('init.probingRemote', { url: chalk.cyan(remoteUrl) }));
       const probe = gitProbeRemote(remoteUrl);
 
       if (probe.error) {
-        logger.error(`Cannot access remote repository: ${probe.error}`);
-        logger.info('  Please check the URL and your access credentials.');
+        logger.error(t('init.cannotAccessRemote', { error: probe.error }));
+        logger.info(t('init.checkUrlCredentials'));
         return;
       }
 
       if (probe.empty) {
         // ─── Case 1: Empty remote → fresh init + push ───
-        logger.info('Remote repository is empty. Initializing a new skillstash hub...');
+        logger.info(t('init.remoteEmpty'));
         await initFreshHub(hubPath, remoteUrl);
       } else if (probe.hasRegistry) {
         // ─── Case 2: Non-empty remote with registry.json → clone + import ───
-        logger.info('Remote repository contains a skillstash hub. Cloning...');
+        logger.info(t('init.remoteHasHub'));
         await cloneAndImport(hubPath, remoteUrl);
       } else {
         // ─── Case 3: Non-empty remote without registry.json → reject ───
-        logger.error('Remote repository is not empty and does not appear to be a skillstash hub.');
-        logger.error('  (No registry.json found in the repository)');
+        logger.error(t('init.remoteNotEmpty'));
+        logger.error(t('init.noRegistryFound'));
         logger.info('');
-        logger.info('  Please either:');
-        logger.info(`    1. Create a new empty repository and run ${chalk.cyan('skillstash init <new-url>')}`);
-        logger.info(`    2. Or delete all content in the existing repository and retry.`);
+        logger.info(t('init.pleaseEither'));
+        logger.info(`    ${t('init.pleaseDo1')}`);
+        logger.info(`    ${t('init.pleaseDo2')}`);
         return;
       }
+
+      // Persist language preference to local.json
+      const localState = loadLocalState(hubPath);
+      localState.language = selectedLang;
+      saveLocalState(localState, hubPath);
     });
 }
 
@@ -169,18 +190,18 @@ export async function initFreshHub(
   // Create hub structure
   const result = initHub(hubPath);
   if (!result.created) {
-    logger.error('Failed to create hub directory');
+    logger.error(t('init.failedCreateHub'));
     return;
   }
-  logger.success('Skills hub directory created');
-  logger.success('Registry initialized');
+  logger.success(t('init.hubDirCreated'));
+  logger.success(t('init.registryInitialized'));
 
   // Initialize git
   if (!gitInit(hubPath)) {
-    logger.error('Git init failed');
+    logger.error(t('init.gitInitFailed'));
     return;
   }
-  logger.success('Git repository initialized');
+  logger.success(t('init.gitInitialized'));
 
   // Interactive agent selection
   const registry = loadRegistry(hubPath);
@@ -196,7 +217,7 @@ export async function initFreshHub(
   const agents = Object.values(registry.agents).filter((a) => a.available && a.enabled);
 
   if (agents.length > 0) {
-    logger.step('Scanning agent directories for existing skills...');
+    logger.step(t('init.scanningAgentDirs'));
     const discovered = new Map<string, DiscoveredSkill>();
 
     for (const agent of agents) {
@@ -207,7 +228,7 @@ export async function initFreshHub(
         }
       }
       if (skills.length > 0) {
-        logger.info(`  ${agent.name}: found ${skills.length} skill(s)`);
+        logger.info(t('init.agentFoundSkills', { agent: agent.name, count: skills.length }));
       }
     }
 
@@ -215,22 +236,22 @@ export async function initFreshHub(
       const imported = importDiscoveredSkills(hubPath, registry, discovered);
       if (imported > 0) {
         saveRegistry(registry, hubPath);
-        logger.success(`Imported ${imported} skill(s) from agent directories`);
+        logger.success(t('init.importedSkillsFromAgents', { count: imported }));
       }
     } else {
-      logger.info('  No existing skills found in agent directories');
+      logger.info(t('init.noExistingSkills'));
     }
   }
 
   // Commit and push
   gitCommit(hubPath, 'init: create skillstash hub');
   gitAddRemote(hubPath, remoteUrl);
-  logger.step('Pushing to remote...');
+  logger.step(t('common.pushing'));
 
   if (gitPushSetUpstream(hubPath)) {
-    logger.success('Pushed to remote');
+    logger.success(t('common.pushed'));
   } else {
-    logger.warn('Push failed — you can push manually later with: skillstash sync');
+    logger.warn(t('common.pushFailed'));
   }
 
   // Show summary
@@ -250,18 +271,18 @@ export async function cloneAndImport(
   fs.mkdirSync(path.dirname(hubPath), { recursive: true });
 
   // Clone
-  logger.step('Cloning remote repository...');
+  logger.step(t('init.cloning'));
   if (!gitClone(remoteUrl, hubPath)) {
-    logger.error('Clone failed. Please check the URL and your access credentials.');
+    logger.error(t('init.cloneFailed'));
     return;
   }
-  logger.success('Repository cloned');
+  logger.success(t('init.cloned'));
 
   // Verify registry.json exists in cloned repo
   const registryPath = path.join(hubPath, 'registry.json');
   if (!fs.existsSync(registryPath)) {
-    logger.error('Cloned repository does not contain registry.json. This should not happen.');
-    logger.info('  Please check the repository contents.');
+    logger.error(t('init.noRegistryInClone'));
+    logger.info(t('init.checkRepoContents'));
     return;
   }
 
@@ -291,7 +312,7 @@ export async function cloneAndImport(
   // Import any agent skills not yet in the hub (only from managed agents)
   const availableAgents = Object.values(registry.agents).filter((a) => a.available && a.enabled);
   if (availableAgents.length > 0) {
-    logger.step('Scanning agent directories for new skills...');
+    logger.step(t('init.scanningAgentNew'));
     const discovered = new Map<string, DiscoveredSkill>();
 
     for (const agent of availableAgents) {
@@ -304,7 +325,7 @@ export async function cloneAndImport(
         }
       }
       if (newSkills.length > 0) {
-        logger.info(`  ${agent.name}: found ${newSkills.length} new skill(s)`);
+        logger.info(t('init.agentFoundNewSkills', { agent: agent.name, count: newSkills.length }));
       }
     }
 
@@ -313,21 +334,21 @@ export async function cloneAndImport(
       if (imported > 0) {
         saveRegistry(registry, hubPath);
         gitCommit(hubPath, `init: import ${imported} skill(s) from local agents`);
-        logger.success(`Imported ${imported} new skill(s) from agent directories`);
+        logger.success(t('init.importedNewSkillsFromAgents', { count: imported }));
 
         // Push the imported skills
-        logger.step('Pushing imported skills to remote...');
+        logger.step(t('init.pushingImported'));
         if (gitPushSetUpstream(hubPath)) {
-          logger.success('Pushed to remote');
+          logger.success(t('common.pushed'));
         }
       }
     } else {
-      logger.info('  No new skills to import from agent directories');
+      logger.info(t('init.noNewFromAgents'));
     }
   }
 
   const skillCount = Object.keys(registry.skills).length;
-  logger.info(`\n  Hub contains ${chalk.bold(skillCount)} skill(s) from remote`);
+  logger.info(t('init.hubContains', { count: chalk.bold(skillCount) }));
 
   // Show summary
   await showInitSummary(hubPath, registry, linkPrompter);
@@ -345,7 +366,7 @@ async function runInitLink(
   const skillsDir = getSkillsPath(hubPath);
   let totalLinked = 0;
 
-  logger.step('Linking skills to agent directories...');
+  logger.step(t('common.linkingSkillsToAgents'));
 
   for (const agent of agents) {
     ensureDir(agent.skillsPath);
@@ -367,13 +388,13 @@ async function runInitLink(
         }
         totalLinked++;
       } catch (e) {
-        logger.error(`  ${agent.name}/${skillName}: ${(e as Error).message}`);
+        logger.error(t('common.skillLinkError', { agent: agent.name, skill: skillName, message: (e as Error).message }));
       }
     }
   }
 
   saveRegistry(registry, hubPath);
-  logger.success(`Linked ${totalLinked} skill(s) to ${agents.length} agent(s)`);
+  logger.success(t('common.linkedSkillsAgents', { count: totalLinked, agents: agents.length }));
 }
 
 /**
@@ -388,20 +409,20 @@ async function showInitSummary(
   const skillCount = Object.keys(registry.skills).length;
 
   logger.info('');
-  logger.info('Detected agents:');
+  logger.info(t('init.detectedAgentsHeader'));
   for (const agent of agents) {
     const availStatus = agent.available
-      ? chalk.green('✓ available')
-      : chalk.gray('✗ not found');
+      ? chalk.green(t('common.agentAvailable'))
+      : chalk.gray(t('common.agentNotFound'));
     const managedStatus = agent.enabled
-      ? chalk.green('✓ managed')
-      : chalk.yellow('✗ disabled');
+      ? chalk.green(t('common.agentManaged'))
+      : chalk.yellow(t('common.agentDisabled'));
     logger.info(`  ${chalk.bold(agent.name)}: ${availStatus}  ${managedStatus} → ${chalk.gray(agent.skillsPath)}`);
   }
 
   logger.info('');
-  logger.success(`Done! Hub initialized at ${chalk.cyan(hubPath)}`);
-  logger.info(`  Skills: ${skillCount}`);
+  logger.success(t('init.done', { path: chalk.cyan(hubPath) }));
+  logger.info(t('init.skillsCount', { count: skillCount }));
 
   // Prompt to run link now
   const managedAgents = agents.filter((a) => a.available && a.enabled);
@@ -415,8 +436,8 @@ async function showInitSummary(
   }
 
   logger.info('');
-  logger.info('Next steps:');
-  logger.info(`  ${chalk.cyan('skillstash install <name>')}  — Install a new skill`);
-  logger.info(`  ${chalk.cyan('skillstash link')}           — Copy skills to agent directories`);
-  logger.info(`  ${chalk.cyan('skillstash sync')}           — Full sync (pull + link + push)`);
+  logger.info(t('init.nextSteps'));
+  logger.info(`  ${chalk.cyan('skillstash install <name>')}  — ${t('init.nextInstall')}`);
+  logger.info(`  ${chalk.cyan('skillstash link')}           — ${t('init.nextLink')}`);
+  logger.info(`  ${chalk.cyan('skillstash sync')}           — ${t('init.nextSync')}`);
 }

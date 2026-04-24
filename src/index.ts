@@ -15,6 +15,20 @@ import { registerImportCommand } from './commands/import.js';
 
 import { registerAgentsCommand } from './commands/agents.js';
 import { registerAssignCommand } from './commands/assign.js';
+import { registerLanguageCommand } from './commands/language.js';
+
+import './i18n/en.js';
+import './i18n/zh.js';
+import { setLocale, type Locale } from './i18n/index.js';
+import { loadLocalState } from './core/hub.js';
+
+// Initialize locale from local.json before any command runs
+try {
+  const localState = loadLocalState();
+  setLocale((localState.language ?? 'en') as Locale);
+} catch {
+  setLocale('en');
+}
 
 const program = new Command();
 
@@ -36,6 +50,7 @@ registerRemoveCommand(program);
 registerAgentsCommand(program);
 registerAssignCommand(program);
 registerImportCommand(program);
+registerLanguageCommand(program);
 
 // Custom help display
 program.addHelpText('after', `

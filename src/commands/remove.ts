@@ -5,6 +5,7 @@ import { removeSkillFromRegistry } from '../core/registry.js';
 import { exists, removeDir } from '../utils/fs.js';
 import { gitCommit } from '../core/git.js';
 import { logger } from '../utils/logger.js';
+import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 export function registerRemoveCommand(program: Command): void {
@@ -17,7 +18,7 @@ export function registerRemoveCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
@@ -25,7 +26,7 @@ export function registerRemoveCommand(program: Command): void {
       const skillMeta = registry.skills[skillName];
 
       if (!skillMeta) {
-        logger.error(`Skill "${skillName}" not found in registry`);
+        logger.error(t('remove.skillNotFound', { name: skillName }));
         return;
       }
 
@@ -33,7 +34,7 @@ export function registerRemoveCommand(program: Command): void {
       const hubSkillDir = path.join(getSkillsPath(hubPath), skillName);
       if (exists(hubSkillDir)) {
         removeDir(hubSkillDir);
-        logger.success(`Removed from hub: ${skillName}`);
+        logger.success(t('remove.removedFromHub', { name: skillName }));
       }
 
       // Remove from agent directories
@@ -44,7 +45,7 @@ export function registerRemoveCommand(program: Command): void {
           const agentSkillDir = path.join(agent.skillsPath, skillName);
           if (exists(agentSkillDir)) {
             removeDir(agentSkillDir);
-            logger.success(`Removed from ${agentName}: ${skillName}`);
+            logger.success(t('remove.removedFromAgent', { agent: agentName, name: skillName }));
           }
         }
       }
@@ -54,6 +55,6 @@ export function registerRemoveCommand(program: Command): void {
       saveRegistry(registry, hubPath);
       gitCommit(hubPath, `remove: ${skillName}`);
 
-      logger.info(`\nSkill "${chalk.bold(skillName)}" has been removed.`);
+      logger.info(t('remove.skillRemoved', { name: chalk.bold(skillName) }));
     });
 }

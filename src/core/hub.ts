@@ -65,6 +65,7 @@ export function loadLocalState(hubPath?: string): LocalState {
     agents: state.agents || {},
     skillAgents: state.skillAgents || {},
     agentSkills: state.agentSkills || {},
+    language: state.language ?? 'en',
   };
 }
 
@@ -137,11 +138,16 @@ export function saveRegistry(registry: Registry, hubPath?: string): void {
   }
 
   writeJson(getRegistryPath(hp), { version: registry.version, skills: sharedSkills });
+
+  // Preserve language preference across registry saves
+  const existingLocal = exists(getLocalPath(hp)) ? readJson<LocalState>(getLocalPath(hp)) : null;
+
   saveLocalState({
     lastSync: registry.lastSync,
     agents: registry.agents,
     skillAgents,
     agentSkills: registry.agentSkills || {},
+    language: existingLocal?.language ?? 'en',
   }, hp);
 }
 

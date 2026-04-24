@@ -7,6 +7,7 @@ import { copyDirRecursive, removeDir, hashDir, exists, ensureDir } from '../util
 import { getSkillVersion, getSkillDescription, lintSkill } from '../core/skill.js';
 import { gitCommit } from '../core/git.js';
 import { logger } from '../utils/logger.js';
+import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 interface DiscoveredSkill {
@@ -84,7 +85,7 @@ export function registerImportCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
@@ -95,7 +96,7 @@ export function registerImportCommand(program: Command): void {
         : agents;
 
       if (targetAgents.length === 0) {
-        logger.warn('No available agents to scan');
+        logger.warn(t('import.noAgentsToScan'));
         return;
       }
 
@@ -103,7 +104,7 @@ export function registerImportCommand(program: Command): void {
       const discovered = new Map<string, DiscoveredSkill>();
 
       for (const agent of targetAgents) {
-        logger.step(`Scanning ${chalk.bold(agent.name)} skills directory...`);
+        logger.step(t('import.scanningAgent', { agent: chalk.bold(agent.name) }));
         const skills = scanAgentDir(agent.name, agent.skillsPath);
 
         for (const skill of skills) {
@@ -112,11 +113,11 @@ export function registerImportCommand(program: Command): void {
           }
         }
 
-        logger.info(`  Found ${skills.length} skill(s)`);
+        logger.info(t('import.foundSkills', { count: skills.length }));
       }
 
       if (discovered.size === 0) {
-        logger.info('No skills found in agent directories');
+        logger.info(t('import.noSkillsFound'));
         return;
       }
 
@@ -129,9 +130,9 @@ export function registerImportCommand(program: Command): void {
 
       if (newSkills.length === 0) {
         if (options.force) {
-          logger.info('No skills found in agent directories');
+          logger.info(t('import.noSkillsFound'));
         } else {
-          logger.info('All discovered skills are already in the hub. Use --force to re-import.');
+          logger.info(t('import.allAlreadyInHub'));
         }
         return;
       }
@@ -146,7 +147,7 @@ export function registerImportCommand(program: Command): void {
       }
 
       // Display what we found
-      logger.info(`\n${chalk.bold('Discovered skills:')}  ${newSkills.length} unique names, ${bySourcePath.size} unique sources\n`);
+      logger.info(t('import.discoveredSkills', { names: newSkills.length, sources: bySourcePath.size }) + '\n');
 
       for (const [, { name, skill }] of bySourcePath) {
         const linkInfo = skill.isSymlink
@@ -156,7 +157,7 @@ export function registerImportCommand(program: Command): void {
       }
 
       if (options.dryRun) {
-        logger.info(`\n${chalk.yellow('Dry run — no changes made.')}`);
+        logger.info(t('import.dryRun'));
         return;
       }
 
@@ -173,7 +174,7 @@ export function registerImportCommand(program: Command): void {
         if (options.lint) {
           const lintResult = lintSkill(skill.sourcePath);
           if (!lintResult.valid) {
-            logger.warn(`  Skipping ${name}: SKILL.md validation failed`);
+            logger.warn(t('import.skippingLintFailed', { name }));
             for (const err of lintResult.errors) {
               logger.error(`    ✖ ${err}`);
             }
@@ -184,15 +185,15 @@ export function registerImportCommand(program: Command): void {
         // Remove existing directory if overwriting
         if (exists(destDir)) {
           if (!isUpdate && !options.force) {
-            logger.warn(`  Skipping ${name}: already exists in hub directory`);
+            logger.warn(t('import.skippingAlreadyExists', { name }));
             continue;
           }
           removeDir(destDir);
         }
 
         // Copy from real path (resolves symlinks)
-        const label = isUpdate ? 'Updating' : 'Importing';
-        logger.step(`  ${label} ${chalk.bold(name)}`);
+        const label = isUpdate ? t('import.updatingSkill', { name }) : t('import.importingSkill', { name: chalk.bold(name) });
+        logger.step(`  ${label}`);
         copyDirRecursive(skill.sourcePath, destDir);
 
         const version = getSkillVersion(destDir);
@@ -224,10 +225,10 @@ export function registerImportCommand(program: Command): void {
         if (imported > 0) parts.push(`imported ${imported}`);
         if (updated > 0) parts.push(`updated ${updated}`);
         gitCommit(hubPath, `import: ${parts.join(', ')} skill(s) from agent directories`);
-        logger.success(`\n${parts.join(', ')} skill(s)`);
-        logger.info(`Run ${chalk.cyan('skillstash link')} to distribute to all agents`);
+        logger.success(t('import.importSummary', { summary: parts.join(', ') }));
+        logger.info(t('import.runLinkHint'));
       } else {
-        logger.info('\nNo new skills to import');
+        logger.info(t('import.noNewSkills'));
       }
     });
 }

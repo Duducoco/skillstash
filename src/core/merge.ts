@@ -1,3 +1,5 @@
+import { t } from '../i18n/index.js';
+
 export interface SkillResolution {
   skill: string;
   winner: 'ours' | 'theirs' | 'deleted';
@@ -56,12 +58,12 @@ export function mergeSharedRegistries(
           resolutions.push({
             skill: name,
             winner: 'ours',
-            reason: oursTime > theirsTime ? '本地版本更新' : '时间戳相同，保留本地',
+            reason: oursTime > theirsTime ? t('merge.localNewer') : t('merge.sameTimestampKeepLocal'),
           });
         } else {
           mergedSkills[name] = theirsSkill;
           winnerMap[name] = 'theirs';
-          resolutions.push({ skill: name, winner: 'theirs', reason: '远端版本更新' });
+          resolutions.push({ skill: name, winner: 'theirs', reason: t('merge.remoteNewer') });
         }
       }
     } else if (inOurs && !inTheirs) {
@@ -69,11 +71,11 @@ export function mergeSharedRegistries(
         // We modified it, they deleted it — keep ours
         mergedSkills[name] = oursSkill;
         winnerMap[name] = 'ours';
-        resolutions.push({ skill: name, winner: 'ours', reason: '远端已删除，本地有改动，保留本地' });
+        resolutions.push({ skill: name, winner: 'ours', reason: t('merge.remoteDeletedLocalHasChanges') });
       } else if (inBase) {
         // We didn't modify it, they deleted it — follow deletion
         winnerMap[name] = 'deleted';
-        resolutions.push({ skill: name, winner: 'deleted', reason: '远端已删除' });
+        resolutions.push({ skill: name, winner: 'deleted', reason: t('merge.deletedByRemote') });
       } else {
         // Added locally only — keep
         mergedSkills[name] = oursSkill;
@@ -84,11 +86,11 @@ export function mergeSharedRegistries(
         // They modified it, we deleted it — take theirs
         mergedSkills[name] = theirsSkill;
         winnerMap[name] = 'theirs';
-        resolutions.push({ skill: name, winner: 'theirs', reason: '本地已删除，远端有改动，采用远端' });
+        resolutions.push({ skill: name, winner: 'theirs', reason: t('merge.localDeletedRemoteHasChanges') });
       } else if (inBase) {
         // We deleted, they didn't modify — stay deleted
         winnerMap[name] = 'deleted';
-        resolutions.push({ skill: name, winner: 'deleted', reason: '本地已删除' });
+        resolutions.push({ skill: name, winner: 'deleted', reason: t('merge.deletedByLocal') });
       } else {
         // Added remotely only — take
         mergedSkills[name] = theirsSkill;

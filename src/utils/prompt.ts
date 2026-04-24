@@ -1,6 +1,7 @@
 import { checkbox, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { AgentConfig } from '../core/registry.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Interactive agent selection using @inquirer/prompts checkbox.
@@ -13,13 +14,13 @@ export async function selectAgents(agents: AgentConfig[]): Promise<Set<string>> 
 
   const choices = agents.map((agent) => ({
     value: agent.name,
-    name: `${agent.name}  ${agent.available ? chalk.green('✓ available') : chalk.gray('✗ not found')}`,
+    name: `${agent.name}  ${agent.available ? chalk.green(t('common.agentAvailable')) : chalk.gray(t('common.agentNotFound'))}`,
     checked: agent.available ? agent.enabled : false,
     disabled: agent.available ? false : true,
   }));
 
   const selected = await checkbox({
-    message: 'Select agents to manage (space to toggle, enter to confirm)',
+    message: t('prompt.selectAgents'),
     choices,
     required: false,
     shortcuts: {
@@ -41,7 +42,7 @@ export async function promptLinkNow(): Promise<boolean> {
   }
 
   return confirm({
-    message: 'Run link now? This will copy all skills from the hub to your managed agent directories.',
+    message: t('prompt.runLinkNow'),
     default: true,
   });
 }
@@ -67,7 +68,7 @@ export async function selectSkillsForAgent(
   }));
 
   return checkbox({
-    message: `为 ${chalk.cyan(agentName)} 选择要启用的 skill（空格切换，回车确认，a 全选，i 反选）`,
+    message: t('prompt.selectSkillsForAgent', { agent: agentName }),
     choices,
     required: false,
     pageSize: Math.min(skills.length, 20),

@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { hubExists, getSkillsPath, loadRegistry, getDefaultHubPath } from '../core/hub.js';
 import { exists, hashDir } from '../utils/fs.js';
 import { logger } from '../utils/logger.js';
+import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
 export function registerDiffCommand(program: Command): void {
@@ -15,7 +16,7 @@ export function registerDiffCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skillstash init` first.');
+        logger.error(t('common.hubNotInitialized'));
         return;
       }
 
@@ -27,7 +28,7 @@ export function registerDiffCommand(program: Command): void {
         : agents;
 
       if (targetAgents.length === 0) {
-        logger.warn('No available agents to diff');
+        logger.warn(t('diff.noAgentsToDiff'));
         return;
       }
 
@@ -43,13 +44,13 @@ export function registerDiffCommand(program: Command): void {
           const agentDir = path.join(agent.skillsPath, skillName);
 
           if (!exists(hubDir)) {
-            logger.warn(`  ${skillName}: ${chalk.red('missing in hub')}`);
+            logger.warn(t('diff.missingInHub', { skill: skillName }));
             hasDiff = true;
             continue;
           }
 
           if (!exists(agentDir)) {
-            logger.warn(`  ${skillName}: ${chalk.yellow('not linked')} — exists in hub but not in agent dir`);
+            logger.warn(t('diff.notLinked', { skill: skillName }));
             hasDiff = true;
             continue;
           }
@@ -58,10 +59,10 @@ export function registerDiffCommand(program: Command): void {
           const agentHash = hashDir(agentDir);
 
           if (hubHash !== agentHash) {
-            logger.warn(`  ${skillName}: ${chalk.yellow('out of sync')} — hub=${hubHash} agent=${agentHash}`);
+            logger.warn(t('diff.outOfSync', { skill: skillName, hubHash, agentHash }));
             hasDiff = true;
           } else {
-            logger.success(`  ${skillName}: ${chalk.gray('in sync')}`);
+            logger.success(t('diff.inSync', { skill: skillName }));
           }
         }
 
@@ -73,16 +74,16 @@ export function registerDiffCommand(program: Command): void {
             .filter((name) => !skillNames.includes(name));
 
           for (const name of agentOnlySkills) {
-            logger.info(`  ${name}: ${chalk.blue('unmanaged')} — exists in agent but not in hub`);
+            logger.info(t('diff.unmanaged', { skill: name }));
             hasDiff = true;
           }
         }
       }
 
       if (!hasDiff) {
-        logger.info(`\n${chalk.green('All skills are in sync!')}`);
+        logger.info(t('diff.allInSync'));
       } else {
-        logger.info(`\nRun ${chalk.cyan('skillstash sync')} to resolve differences`);
+        logger.info(t('diff.runSync'));
       }
     });
 }
