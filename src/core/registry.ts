@@ -91,3 +91,13 @@ export function setAgentEnabled(
   registry.agents[name].enabled = enabled;
   return registry;
 }
+
+export interface LocalState {
+  lastSync: string | null;
+  agents: Record<string, AgentConfig>;
+  skillAgents: Record<string, string[]>;
+}
+
+export function createEmptyLocalState(): LocalState {
+  return { lastSync: null, agents: {}, skillAgents: {} };
+}
