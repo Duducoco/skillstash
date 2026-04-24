@@ -12,7 +12,7 @@ import { updateSkillInRegistry, removeSkillFromRegistry } from '../core/registry
 import { mergeSharedRegistries } from '../core/merge.js';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import { logger } from '../utils/logger.js';
+import { logger, startSpinner, stopSpinner } from '../utils/logger.js';
 import { t } from '../i18n/index.js';
 import chalk from 'chalk';
 
@@ -49,8 +49,9 @@ export function registerSyncCommand(program: Command): void {
           gitCommit(hubPath, 'sync: auto-commit local changes before pull');
         }
 
-        logger.step(t('sync.fetchingRemote'));
+        startSpinner(t('sync.fetchingRemote'));
         const fetched = gitFetch(hubPath);
+        stopSpinner(fetched);
         if (!fetched) {
           logger.warn(t('sync.fetchFailed'));
         } else {
@@ -205,6 +206,7 @@ export function registerSyncCommand(program: Command): void {
               ? enabledSkills.filter((s) => deviceFilter.includes(s))
               : enabledSkills;
 
+            let agentLinked = 0;
             for (const skillName of agentSkillList) {
               const srcDir = path.join(skillsDir, skillName);
               const destDir = path.join(agent.skillsPath, skillName);
@@ -220,7 +222,9 @@ export function registerSyncCommand(program: Command): void {
                 if (!registry.skills[skillName].agents.includes(agent.name)) {
                   registry.skills[skillName].agents.push(agent.name);
                 }
+                agentLinked++;
                 totalLinked++;
+                logger.progress(`${agent.name}/${skillName}`, agentLinked, agentSkillList.length);
               } catch (e) {
                 logger.error(t('common.skillLinkError', { agent: agent.name, skill: skillName, message: (e as Error).message }));
               }
@@ -247,9 +251,11 @@ export function registerSyncCommand(program: Command): void {
 
       // Step 4: Git push
       if (options.push && hasRemote(hubPath)) {
-        logger.step(t('common.pushing'));
+        startSpinner(t('common.pushing'));
         if (gitPush(hubPath)) {
-          logger.success(t('common.pushed'));
+          stopSpinner(true, t('common.pushed'));
+        } else {
+          stopSpinner(false);
         }
       }
 

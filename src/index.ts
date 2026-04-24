@@ -16,6 +16,7 @@ import { registerImportCommand } from './commands/import.js';
 import { registerAgentsCommand } from './commands/agents.js';
 import { registerAssignCommand } from './commands/assign.js';
 import { registerLanguageCommand } from './commands/language.js';
+import { registerAddRemoteCommand } from './commands/add-remote.js';
 
 import './i18n/en.js';
 import './i18n/zh.js';
@@ -35,7 +36,7 @@ const program = new Command();
 program
   .name('skillstash')
   .description('Personal skill management system with multi-device & multi-agent sync')
-  .version('0.7.1')
+  .version('0.8.0')
   .helpOption('-h, --help', 'Show help');
 
 // Register all commands
@@ -51,11 +52,14 @@ registerAgentsCommand(program);
 registerAssignCommand(program);
 registerImportCommand(program);
 registerLanguageCommand(program);
+registerAddRemoteCommand(program);
 
 // Custom help display
 program.addHelpText('after', `
 ${chalk.bold('Quick Start:')}
-  $ skillstash init <remote-url>            Initialize hub with a Git remote
+  $ skillstash init                         Initialize a local hub (no Git remote needed)
+  $ skillstash init <remote-url>            Initialize hub and sync with a Git remote
+  $ skillstash add-remote <url>             Link an existing local hub to a Git remote
   $ skillstash install clawhub:<slug>       Install a skill from ClawHub
   $ skillstash import                       Import existing skills from agent directories
   $ skillstash link                         Copy skills to all agent directories
@@ -66,6 +70,8 @@ ${chalk.bold('Agent Management:')}
   $ skillstash agents select                Interactively choose which agents to manage
   $ skillstash agents enable <name>         Enable an agent for management
   $ skillstash agents disable <name>        Disable an agent (skip for link/sync)
+  $ skillstash agents add <name> --path <p> Register a custom agent
+  $ skillstash agents remove <name>         Unregister a custom agent
   $ skillstash assign                       Assign skills to agents on this device
   $ skillstash assign --agent claude        Configure only a specific agent
 
@@ -75,7 +81,9 @@ ${chalk.bold('Install Sources:')}
   GitHub        skillstash install owner/repo@skill-name
 
 ${chalk.bold('Examples:')}
+  $ skillstash init
   $ skillstash init git@github.com:user/my-skills.git
+  $ skillstash add-remote git@github.com:user/my-skills.git
   $ skillstash install clawhub:finance-ops
   $ skillstash install owner/repo@skill-name
   $ skillstash import

@@ -1,6 +1,8 @@
 import { Command } from 'commander';
-import { hubExists, loadRegistry, saveRegistry, getDefaultHubPath, detectAgents } from '../core/hub.js';
+import { hubExists, loadRegistry, saveRegistry, getDefaultHubPath, detectAgents, loadLocalState, saveLocalState } from '../core/hub.js';
 import { setAgentEnabled, addAgentToRegistry, AgentConfig } from '../core/registry.js';
+import { isBuiltinAgent } from '../core/agents.js';
+import type { AgentDefinition } from '../core/agents.js';
 import { selectAgents } from '../utils/prompt.js';
 import { logger } from '../utils/logger.js';
 import { t } from '../i18n/index.js';
@@ -127,5 +129,90 @@ export function registerAgentsCommand(program: Command): void {
       setAgentEnabled(registry, name, false);
       saveRegistry(registry, hubPath);
       logger.success(t('agents.agentNowDisabled', { name: chalk.bold(name) }));
+    });
+
+  agentsCmd
+    .command('add <name>')
+    .description('Register a custom agent definition')
+    .requiredOption('--path <skills-path>', 'Absolute path to the agent\'s skills directory')
+    .option('--link-type <type>', 'Link type: copy, symlink, or junction', 'copy')
+    .action(async (name: string, options: { path: string; linkType: string }) => {
+      const hubPath = getDefaultHubPath();
+
+      if (!hubExists(hubPath)) {
+        logger.error(t('common.hubNotInitialized'));
+        return;
+      }
+
+      if (isBuiltinAgent(name)) {
+        logger.warn(t('agents.builtinCannotRemove', { name }));
+        return;
+      }
+
+      const linkType = options.linkType as 'copy' | 'symlink' | 'junction';
+      const def: AgentDefinition = { name, skillsPath: options.path, linkType };
+
+      const localState = loadLocalState(hubPath);
+      const customAgents = localState.customAgents ?? [];
+      const existingIdx = customAgents.findIndex((a) => a.name === name);
+      if (existingIdx >= 0) {
+        customAgents[existingIdx] = def;
+      } else {
+        customAgents.push(def);
+      }
+      localState.customAgents = customAgents;
+      saveLocalState(localState, hubPath);
+
+      // Also register in the registry agents map
+      const registry = loadRegistry(hubPath);
+      const { existsSync } = await import('node:fs');
+      const { dirname } = await import('node:path');
+      const agentConfig: AgentConfig = {
+        name,
+        skillsPath: options.path,
+        linkType,
+        available: existsSync(dirname(options.path)),
+        enabled: true,
+      };
+      addAgentToRegistry(registry, name, agentConfig);
+      saveRegistry(registry, hubPath);
+
+      logger.success(t('agents.agentAdded', { name: chalk.bold(name), path: options.path }));
+      logger.info(t('agents.customAgentHint'));
+    });
+
+  agentsCmd
+    .command('remove <name>')
+    .description('Unregister a custom agent (built-in agents cannot be removed)')
+    .action(async (name: string) => {
+      const hubPath = getDefaultHubPath();
+
+      if (!hubExists(hubPath)) {
+        logger.error(t('common.hubNotInitialized'));
+        return;
+      }
+
+      if (isBuiltinAgent(name)) {
+        logger.error(t('agents.builtinCannotRemove', { name }));
+        return;
+      }
+
+      const localState = loadLocalState(hubPath);
+      const customAgents = localState.customAgents ?? [];
+      const idx = customAgents.findIndex((a) => a.name === name);
+      if (idx < 0) {
+        logger.error(t('common.agentNotInRegistry', { name }));
+        return;
+      }
+      customAgents.splice(idx, 1);
+      localState.customAgents = customAgents;
+      saveLocalState(localState, hubPath);
+
+      // Remove from registry agents map
+      const registry = loadRegistry(hubPath);
+      delete registry.agents[name];
+      saveRegistry(registry, hubPath);
+
+      logger.success(t('agents.agentRemoved', { name: chalk.bold(name) }));
     });
 }

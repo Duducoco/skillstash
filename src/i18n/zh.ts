@@ -4,7 +4,7 @@ import { registerLocale } from './index.js';
 export const zh: Messages = {
   common: {
     hubNotInitialized: '技能库未初始化，请先运行 `skillstash init`。',
-    hubNotInitializedWithUrl: '技能库未初始化，请先运行 `skillstash init <remote-url>`。',
+    hubNotInitializedWithUrl: '技能库未初始化，请先运行 `skillstash init`。',
     agentNotInRegistry: '注册表中未找到 Agent "{name}"。',
     availableAgents: '可用 Agent：{list}',
     pushing: '正在推送到远程...',
@@ -21,6 +21,8 @@ export const zh: Messages = {
     noSkillsToLink: '没有技能可链接',
     skillSourceMissing: '{skill}：技能库中未找到来源',
     removingUnmanaged: '正在移除未托管项：{agent}/{skill}',
+    lockFailed: '无法获取技能库锁 — 可能有另一个 skillstash 进程正在运行。',
+    lockTimeout: '技能库锁等待超时（{ms}ms）。若无其他进程在运行，请删除 {path}/.lock 文件。',
   },
   init: {
     alreadyExists: '技能库已存在于 {path}',
@@ -65,6 +67,8 @@ export const zh: Messages = {
     nextInstall: '`skillstash install <name>`  — 安装新技能',
     nextLink: '`skillstash link`           — 将技能复制到 Agent 目录',
     nextSync: '`skillstash sync`           — 完整同步（拉取 + 链接 + 推送）',
+    localMode: '未提供远程 URL，正在创建本地技能库。',
+    localNote: '如需关联远程仓库，请运行：skillstash add-remote <url>',
   },
   sync: {
     unresolvedConflicts: '技能库存在未解决的合并冲突，请手动处理：\n  cd "{path}" && git merge --abort',
@@ -107,6 +111,10 @@ export const zh: Messages = {
     managingCount: '正在托管 {enabled}/{total} 个 Agent',
     agentNowManaged: 'Agent "{name}" 已启用托管',
     agentNowDisabled: 'Agent "{name}" 已禁用（链接/同步时将跳过）',
+    agentAdded: '自定义 Agent "{name}" 已注册（技能路径：{path}）',
+    agentRemoved: '自定义 Agent "{name}" 已删除',
+    builtinCannotRemove: '"{name}" 是内建 Agent，不可删除。使用 `agents disable {name}` 可将其排除在同步之外。',
+    customAgentHint: '运行 `skillstash agents select` 或 `skillstash link` 激活新 Agent。',
   },
   diff: {
     noAgentsToDiff: '没有可用的 Agent 进行对比',
@@ -160,6 +168,18 @@ export const zh: Messages = {
     updatingSkill: '正在更新已有技能：{name}',
     installingSkill: '正在安装技能：{name} v{version}',
     installed: '已从 {source} 安装 {name} v{version}',
+    githubRepoNotFound: '仓库不存在或为私有仓库：{url}',
+    githubRepoNotFoundHint: '请检查仓库 URL，并确认已配置访问权限（SSH Key 或 Token）。',
+    githubAuthFailed: 'GitHub 认证失败：{url}',
+    githubAuthHint: '请配置 SSH Key 或个人访问令牌后重试。',
+    githubTimeout: '克隆时连接超时，请检查网络后重试。',
+    githubCloneFailed: '克隆仓库失败：{message}',
+  },
+  addRemote: {
+    remoteAdded: '远程 "{url}" 已关联，首次推送完成。',
+    remoteAddFailed: '关联远程或推送失败：{message}',
+    alreadyHasRemote: '技能库已有远程配置。如需更改，请运行：git -C {path} remote set-url origin <new-url>',
+    pushing: '正在首次推送到远程...',
   },
   link: {
     noAgentsToLink: '没有可链接的 Agent',

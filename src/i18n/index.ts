@@ -18,6 +18,8 @@ export interface Messages {
     noSkillsToLink: string;
     skillSourceMissing: string;
     removingUnmanaged: string;
+    lockFailed: string;
+    lockTimeout: string;
   };
   init: {
     alreadyExists: string;
@@ -62,6 +64,8 @@ export interface Messages {
     nextInstall: string;
     nextLink: string;
     nextSync: string;
+    localMode: string;
+    localNote: string;
   };
   sync: {
     unresolvedConflicts: string;
@@ -104,6 +108,10 @@ export interface Messages {
     managingCount: string;
     agentNowManaged: string;
     agentNowDisabled: string;
+    agentAdded: string;
+    agentRemoved: string;
+    builtinCannotRemove: string;
+    customAgentHint: string;
   };
   diff: {
     noAgentsToDiff: string;
@@ -157,6 +165,18 @@ export interface Messages {
     updatingSkill: string;
     installingSkill: string;
     installed: string;
+    githubRepoNotFound: string;
+    githubRepoNotFoundHint: string;
+    githubAuthFailed: string;
+    githubAuthHint: string;
+    githubTimeout: string;
+    githubCloneFailed: string;
+  };
+  addRemote: {
+    remoteAdded: string;
+    remoteAddFailed: string;
+    alreadyHasRemote: string;
+    pushing: string;
   };
   link: {
     noAgentsToLink: string;

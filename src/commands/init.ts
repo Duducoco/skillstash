@@ -114,9 +114,9 @@ function importDiscoveredSkills(hubPath: string, registry: ReturnType<typeof loa
 export function registerInitCommand(program: Command): void {
   program
     .command('init')
-    .description('Initialize the skills-hub with a remote Git repository')
-    .argument('<remote-url>', 'Remote Git repository URL (e.g. git@github.com:user/skills.git)')
-    .action(async (remoteUrl: string) => {
+    .description('Initialize the skills-hub (local-only by default; provide <remote-url> to sync via Git)')
+    .argument('[remote-url]', 'Optional remote Git repository URL (e.g. git@github.com:user/skills.git)')
+    .action(async (remoteUrl: string | undefined) => {
       const hubPath = getDefaultHubPath();
 
       // ── Language selection: MUST be first, before any logger call ──
@@ -142,33 +142,36 @@ export function registerInitCommand(program: Command): void {
         return;
       }
 
-      // Step 1: Probe the remote
-      logger.step(t('init.probingRemote', { url: chalk.cyan(remoteUrl) }));
-      const probe = gitProbeRemote(remoteUrl);
-
-      if (probe.error) {
-        logger.error(t('init.cannotAccessRemote', { error: probe.error }));
-        logger.info(t('init.checkUrlCredentials'));
-        return;
-      }
-
-      if (probe.empty) {
-        // ─── Case 1: Empty remote → fresh init + push ───
-        logger.info(t('init.remoteEmpty'));
-        await initFreshHub(hubPath, remoteUrl);
-      } else if (probe.hasRegistry) {
-        // ─── Case 2: Non-empty remote with registry.json → clone + import ───
-        logger.info(t('init.remoteHasHub'));
-        await cloneAndImport(hubPath, remoteUrl);
+      if (!remoteUrl) {
+        // ─── Local-only mode ───
+        logger.info(t('init.localMode'));
+        await initLocalHub(hubPath);
       } else {
-        // ─── Case 3: Non-empty remote without registry.json → reject ───
-        logger.error(t('init.remoteNotEmpty'));
-        logger.error(t('init.noRegistryFound'));
-        logger.info('');
-        logger.info(t('init.pleaseEither'));
-        logger.info(`    ${t('init.pleaseDo1')}`);
-        logger.info(`    ${t('init.pleaseDo2')}`);
-        return;
+        // ─── Remote mode: probe → fresh or clone ───
+        logger.step(t('init.probingRemote', { url: chalk.cyan(remoteUrl) }));
+        const probe = gitProbeRemote(remoteUrl);
+
+        if (probe.error) {
+          logger.error(t('init.cannotAccessRemote', { error: probe.error }));
+          logger.info(t('init.checkUrlCredentials'));
+          return;
+        }
+
+        if (probe.empty) {
+          logger.info(t('init.remoteEmpty'));
+          await initFreshHub(hubPath, remoteUrl);
+        } else if (probe.hasRegistry) {
+          logger.info(t('init.remoteHasHub'));
+          await cloneAndImport(hubPath, remoteUrl);
+        } else {
+          logger.error(t('init.remoteNotEmpty'));
+          logger.error(t('init.noRegistryFound'));
+          logger.info('');
+          logger.info(t('init.pleaseEither'));
+          logger.info(`    ${t('init.pleaseDo1')}`);
+          logger.info(`    ${t('init.pleaseDo2')}`);
+          return;
+        }
       }
 
       // Persist language preference to local.json
@@ -176,6 +179,68 @@ export function registerInitCommand(program: Command): void {
       localState.language = selectedLang;
       saveLocalState(localState, hubPath);
     });
+}
+
+/**
+ * Local-only mode: create hub, init git, detect agents, import skills. No remote.
+ */
+export async function initLocalHub(
+  hubPath: string,
+  agentSelector?: (agents: import('../core/registry.js').AgentConfig[]) => Promise<Set<string>>,
+  linkPrompter?: () => Promise<boolean>
+): Promise<void> {
+  const result = initHub(hubPath);
+  if (!result.created) {
+    logger.error(t('init.failedCreateHub'));
+    return;
+  }
+  logger.success(t('init.hubDirCreated'));
+  logger.success(t('init.registryInitialized'));
+
+  if (!gitInit(hubPath)) {
+    logger.error(t('init.gitInitFailed'));
+    return;
+  }
+  logger.success(t('init.gitInitialized'));
+
+  const registry = loadRegistry(hubPath);
+  const allAgents = Object.values(registry.agents);
+  const selector = agentSelector ?? selectAgents;
+  const selectedNames = await selector(allAgents);
+  for (const agent of allAgents) {
+    setAgentEnabled(registry, agent.name, selectedNames.has(agent.name));
+  }
+  saveRegistry(registry, hubPath);
+
+  const agents = Object.values(registry.agents).filter((a) => a.available && a.enabled);
+  if (agents.length > 0) {
+    logger.step(t('init.scanningAgentDirs'));
+    const discovered = new Map<string, DiscoveredSkill>();
+    for (const agent of agents) {
+      const skills = scanAgentDir(agent.name, agent.skillsPath);
+      for (const skill of skills) {
+        if (!discovered.has(skill.name)) discovered.set(skill.name, skill);
+      }
+      if (skills.length > 0) {
+        logger.info(t('init.agentFoundSkills', { agent: agent.name, count: skills.length }));
+      }
+    }
+    if (discovered.size > 0) {
+      const imported = importDiscoveredSkills(hubPath, registry, discovered);
+      if (imported > 0) {
+        saveRegistry(registry, hubPath);
+        logger.success(t('init.importedSkillsFromAgents', { count: imported }));
+      }
+    } else {
+      logger.info(t('init.noExistingSkills'));
+    }
+  }
+
+  gitCommit(hubPath, 'init: create local skillstash hub');
+
+  await showInitSummary(hubPath, registry, linkPrompter);
+  logger.info('');
+  logger.info(t('init.localNote'));
 }
 
 /**

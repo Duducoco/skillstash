@@ -7,7 +7,7 @@ import { hubExists, getSkillsPath, loadRegistry, saveRegistry, getDefaultHubPath
 import { addSkillToRegistry, updateSkillInRegistry } from '../core/registry.js';
 import { copyDirRecursive, hashDir, exists, removeDir } from '../utils/fs.js';
 import { getSkillName, getSkillVersion, getSkillDescription, lintSkill } from '../core/skill.js';
-import { gitCommit, gitShallowClone, gitAvailable } from '../core/git.js';
+import { gitCommit, gitShallowClone, gitAvailable, type GitCloneResult } from '../core/git.js';
 import { logger } from '../utils/logger.js';
 import { t } from '../i18n/index.js';
 import chalk from 'chalk';
@@ -240,17 +240,34 @@ export function registerInstallCommand(program: Command): void {
         }
 
         logger.step(t('install.cloningFromGithub', { url: chalk.bold(source.url!) }));
-        const tmpDir = gitShallowClone(source.url!);
-        if (!tmpDir) return;
+        const cloneResult = gitShallowClone(source.url!);
+        if (!cloneResult.path) {
+          switch (cloneResult.errorType) {
+            case 'not-found':
+              logger.error(t('install.githubRepoNotFound', { url: source.url! }));
+              logger.info(t('install.githubRepoNotFoundHint'));
+              break;
+            case 'auth-failed':
+              logger.error(t('install.githubAuthFailed', { url: source.url! }));
+              logger.info(t('install.githubAuthHint'));
+              break;
+            case 'timeout':
+              logger.error(t('install.githubTimeout'));
+              break;
+            default:
+              logger.error(t('install.githubCloneFailed', { message: cloneResult.errorMessage ?? '' }));
+          }
+          return;
+        }
 
         try {
-          const skillDir = findGithubSkill(tmpDir, source.skillName);
+          const skillDir = findGithubSkill(cloneResult.path, source.skillName);
           if (!skillDir) return;
 
           await installFromPath(skillDir, hubPath, 'github', options, undefined, source.url);
         } finally {
           try {
-            fs.rmSync(tmpDir, { recursive: true, force: true });
+            fs.rmSync(cloneResult.path, { recursive: true, force: true });
           } catch { /* best effort */ }
         }
         return;

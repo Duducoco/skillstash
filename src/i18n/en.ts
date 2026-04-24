@@ -4,7 +4,7 @@ import { registerLocale } from './index.js';
 export const en: Messages = {
   common: {
     hubNotInitialized: 'Skills hub not initialized. Run `skillstash init` first.',
-    hubNotInitializedWithUrl: 'Skills hub not initialized. Run `skillstash init <remote-url>` first.',
+    hubNotInitializedWithUrl: 'Skills hub not initialized. Run `skillstash init` first.',
     agentNotInRegistry: 'Agent "{name}" not found in registry.',
     availableAgents: 'Available agents: {list}',
     pushing: 'Pushing to remote...',
@@ -21,6 +21,8 @@ export const en: Messages = {
     noSkillsToLink: 'No skills to link',
     skillSourceMissing: '{skill}: source not found in hub',
     removingUnmanaged: 'Removing unmanaged: {agent}/{skill}',
+    lockFailed: 'Failed to acquire hub lock — another skillstash process may be running.',
+    lockTimeout: 'Hub lock timed out after {ms}ms. Delete {path}/.lock if no other process is running.',
   },
   init: {
     alreadyExists: 'Skills hub already exists at {path}',
@@ -65,6 +67,8 @@ export const en: Messages = {
     nextInstall: '`skillstash install <name>`  — Install a new skill',
     nextLink: '`skillstash link`           — Copy skills to agent directories',
     nextSync: '`skillstash sync`           — Full sync (pull + link + push)',
+    localMode: 'No remote URL provided — creating a local-only hub.',
+    localNote: 'To link a remote repository later, run: skillstash add-remote <url>',
   },
   sync: {
     unresolvedConflicts: 'Hub has unresolved merge conflicts. Resolve manually:\n  cd "{path}" && git merge --abort',
@@ -107,6 +111,10 @@ export const en: Messages = {
     managingCount: 'Managing {enabled} of {total} agent(s)',
     agentNowManaged: 'Agent "{name}" is now managed',
     agentNowDisabled: 'Agent "{name}" is now disabled (will be skipped for link/sync)',
+    agentAdded: 'Custom agent "{name}" registered (skills path: {path})',
+    agentRemoved: 'Custom agent "{name}" removed',
+    builtinCannotRemove: '"{name}" is a built-in agent and cannot be removed. Use `agents disable {name}` to exclude it from sync.',
+    customAgentHint: 'Run `skillstash agents select` or `skillstash link` to activate the new agent.',
   },
   diff: {
     noAgentsToDiff: 'No available agents to diff',
@@ -160,6 +168,18 @@ export const en: Messages = {
     updatingSkill: 'Updating existing skill: {name}',
     installingSkill: 'Installing skill: {name} v{version}',
     installed: 'Installed {name} v{version} from {source}',
+    githubRepoNotFound: 'Repository not found or is private: {url}',
+    githubRepoNotFoundHint: 'Check the repository URL and make sure you have access (SSH key or token configured).',
+    githubAuthFailed: 'GitHub authentication failed for: {url}',
+    githubAuthHint: 'Configure SSH keys or a personal access token, then retry.',
+    githubTimeout: 'Connection timed out while cloning. Check your network and retry.',
+    githubCloneFailed: 'Failed to clone repository: {message}',
+  },
+  addRemote: {
+    remoteAdded: 'Remote "{url}" added and initial push complete.',
+    remoteAddFailed: 'Failed to add remote or push: {message}',
+    alreadyHasRemote: 'Hub already has a remote configured. To change it, run: git -C {path} remote set-url origin <new-url>',
+    pushing: 'Pushing to remote for the first time...',
   },
   link: {
     noAgentsToLink: 'No available agents to link to',
