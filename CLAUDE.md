@@ -66,3 +66,7 @@ Key command flows:
 - Registry mutations go through helpers in `src/core/registry.ts` (`addSkill`, `removeSkill`, `updateSkill`); never write registry JSON directly.
 - `src/core/hub.ts` owns the migration logic when loading old registry formats (agents/lastSync moved from `registry.json` to `local.json` in the v1 split).
 - Non-TTY environments (CI) auto-select agents in prompts (`src/utils/prompt.ts`).
+
+## Special Instructions
+- If you modified README.md, please update README_zh.md accordingly.
+- Before committing, please update the version number in package.json. You may ask the user whether to increment the patch, minor, or major version number.
