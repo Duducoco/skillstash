@@ -43,7 +43,7 @@ export function registerSyncCommand(program: Command): void {
           );
           return;
         } else {
-          logger.warn('Pull failed (network or auth issue). Continuing with local state…');
+          logger.warn('Pull failed (network or auth issue). Continuing with local state...');
         }
       } else if (options.pull && !hasRemote(hubPath)) {
         logger.info('No remote configured, skipping pull');

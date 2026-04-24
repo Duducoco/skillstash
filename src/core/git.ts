@@ -237,7 +237,7 @@ export function gitPull(hubPath: string): GitPullResult {
     return { success: true };
   } catch (e) {
     if (gitIsRebasing(hubPath)) {
-      logger.error('Git pull --rebase detected conflicts. Aborting rebase to restore a clean state…');
+      logger.error('Git pull --rebase detected conflicts. Aborting rebase to restore a clean state...');
       try {
         execSync('git rebase --abort', { cwd: hubPath, stdio: 'pipe' });
         logger.warn('Rebase aborted. Resolve conflicts manually, then retry sync.');
