@@ -30,7 +30,7 @@ export function registerLinkCommand(program: Command): void {
       // Filter agents
       const targetAgents = options.agent
         ? agents.filter((a) => a.name === options.agent)
-        : agents.filter((a) => a.available);
+        : agents.filter((a) => a.available && a.enabled);
 
       if (targetAgents.length === 0) {
         logger.warn('No available agents to link to');

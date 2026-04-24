@@ -19,6 +19,7 @@ export interface AgentConfig {
   skillsPath: string;
   linkType: 'copy' | 'symlink' | 'junction';
   available: boolean;
+  enabled: boolean;
 }
 
 export interface Registry {
@@ -78,5 +79,15 @@ export function updateSkillInRegistry(
 ): Registry {
   if (!registry.skills[name]) return registry;
   Object.assign(registry.skills[name], updates, { updatedAt: new Date().toISOString() });
+  return registry;
+}
+
+export function setAgentEnabled(
+  registry: Registry,
+  name: string,
+  enabled: boolean
+): Registry {
+  if (!registry.agents[name]) return registry;
+  registry.agents[name].enabled = enabled;
   return registry;
 }

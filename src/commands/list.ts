@@ -104,15 +104,18 @@ export function registerListCommand(program: Command): void {
       const agents = Object.values(registry.agents);
       logger.info(chalk.bold('  Agents\n'));
       for (const agent of agents) {
-        const status = agent.available
+        const availStatus = agent.available
           ? chalk.green('✓ available')
           : chalk.gray('✗ not found');
+        const managedStatus = agent.enabled
+          ? chalk.green('✓ managed')
+          : chalk.yellow('✗ disabled');
         const agentSkills = agent.available && exists(agent.skillsPath)
           ? fs.readdirSync(agent.skillsPath, { withFileTypes: true })
               .filter((d) => d.isDirectory())
               .length
           : 0;
-        logger.info(`  ${chalk.bold(agent.name.padEnd(14))} ${status}  (${agentSkills} skills)  ${chalk.gray(agent.skillsPath)}`);
+        logger.info(`  ${chalk.bold(agent.name.padEnd(14))} ${availStatus}  ${managedStatus}  (${agentSkills} skills)  ${chalk.gray(agent.skillsPath)}`);
       }
 
       logger.info('');

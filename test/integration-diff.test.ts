@@ -49,6 +49,7 @@ function setupHub(skills: string[]) {
     skillsPath: agentDir,
     linkType: 'copy',
     available: true,
+    enabled: true,
   });
   saveRegistry(reg, hubDir);
 }

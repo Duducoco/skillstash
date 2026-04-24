@@ -44,6 +44,7 @@ beforeEach(() => {
     skillsPath: agentSkillsDir,
     linkType: 'copy',
     available: true,
+    enabled: true,
   });
   saveRegistry(reg, hubDir);
 });

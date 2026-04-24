@@ -5,6 +5,7 @@ import {
   removeSkillFromRegistry,
   addAgentToRegistry,
   updateSkillInRegistry,
+  setAgentEnabled,
   SkillMeta,
   AgentConfig,
   Registry,
@@ -107,6 +108,7 @@ describe('addAgentToRegistry', () => {
       skillsPath: '/home/user/.claude/skills',
       linkType: 'copy',
       available: true,
+      enabled: true,
     };
     addAgentToRegistry(reg, 'claude', config);
     expect(reg.agents['claude']).toEqual(config);
@@ -119,15 +121,18 @@ describe('addAgentToRegistry', () => {
       skillsPath: '/old/path',
       linkType: 'symlink',
       available: true,
+      enabled: true,
     });
     addAgentToRegistry(reg, 'wb', {
       name: 'workbuddy',
       skillsPath: '/new/path',
       linkType: 'copy',
       available: false,
+      enabled: false,
     });
     expect(reg.agents['wb'].skillsPath).toBe('/new/path');
     expect(reg.agents['wb'].linkType).toBe('copy');
+    expect(reg.agents['wb'].enabled).toBe(false);
   });
 });
 
@@ -164,5 +169,40 @@ describe('updateSkillInRegistry', () => {
     const result = updateSkillInRegistry(reg, 'ghost', { version: '9.0.0' });
     expect(result).toBe(reg);
     expect(Object.keys(reg.skills)).toHaveLength(0);
+  });
+});
+
+describe('setAgentEnabled', () => {
+  it('enables an existing agent', () => {
+    const reg = createEmptyRegistry();
+    addAgentToRegistry(reg, 'claude', {
+      name: 'claude',
+      skillsPath: '/home/user/.claude/skills',
+      linkType: 'copy',
+      available: true,
+      enabled: false,
+    });
+    setAgentEnabled(reg, 'claude', true);
+    expect(reg.agents['claude'].enabled).toBe(true);
+  });
+
+  it('disables an existing agent', () => {
+    const reg = createEmptyRegistry();
+    addAgentToRegistry(reg, 'codex', {
+      name: 'codex',
+      skillsPath: '/home/user/.codex/skills',
+      linkType: 'copy',
+      available: true,
+      enabled: true,
+    });
+    setAgentEnabled(reg, 'codex', false);
+    expect(reg.agents['codex'].enabled).toBe(false);
+  });
+
+  it('returns registry unchanged if agent does not exist', () => {
+    const reg = createEmptyRegistry();
+    const result = setAgentEnabled(reg, 'ghost', true);
+    expect(result).toBe(reg);
+    expect(Object.keys(reg.agents)).toHaveLength(0);
   });
 });

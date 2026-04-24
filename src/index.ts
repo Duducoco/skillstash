@@ -13,6 +13,8 @@ import { registerDiffCommand } from './commands/diff.js';
 import { registerRemoveCommand } from './commands/remove.js';
 import { registerImportCommand } from './commands/import.js';
 
+import { registerAgentsCommand } from './commands/agents.js';
+
 const program = new Command();
 
 program
@@ -30,6 +32,7 @@ registerSyncCommand(program);
 registerDiffCommand(program);
 
 registerRemoveCommand(program);
+registerAgentsCommand(program);
 registerImportCommand(program);
 
 // Custom help display
@@ -40,6 +43,12 @@ ${chalk.bold('Quick Start:')}
   $ skillstash import                       Import existing skills from agent directories
   $ skillstash link                         Copy skills to all agent directories
   $ skillstash sync                         Full sync: pull + verify + link + push
+
+${chalk.bold('Agent Management:')}
+  $ skillstash agents list                  Show agents and their managed status
+  $ skillstash agents select                Interactively choose which agents to manage
+  $ skillstash agents enable <name>         Enable an agent for management
+  $ skillstash agents disable <name>        Disable an agent (skip for link/sync)
 
 ${chalk.bold('Install Sources:')}
   ClawHub       skillstash install clawhub:finance-ops
@@ -53,6 +62,7 @@ ${chalk.bold('Examples:')}
   $ skillstash import
   $ skillstash list -v
   $ skillstash link --agent workbuddy
+  $ skillstash agents select
   $ skillstash diff
   $ skillstash sync
   $ skillstash remove old-skill

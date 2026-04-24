@@ -34,7 +34,14 @@ export function loadRegistry(hubPath?: string): Registry {
   if (!exists(rp)) {
     return createEmptyRegistry();
   }
-  return readJson<Registry>(rp);
+  const reg = readJson<Registry>(rp);
+  // Backward compat: ensure all agents have enabled field
+  for (const name of Object.keys(reg.agents)) {
+    if (reg.agents[name].enabled === undefined) {
+      reg.agents[name].enabled = true;
+    }
+  }
+  return reg;
 }
 
 export function saveRegistry(registry: Registry, hubPath?: string): void {
@@ -83,6 +90,7 @@ export function detectAgents(): AgentConfig[] {
     skillsPath: ap.skillsPath,
     linkType: ap.linkType,
     available: fs.existsSync(path.dirname(ap.skillsPath)),
+    enabled: true,
   }));
 }
 

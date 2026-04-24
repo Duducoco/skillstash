@@ -89,8 +89,8 @@ beforeEach(() => {
   initHub(hubDir);
   const reg = loadRegistry(hubDir);
   reg.agents = {};
-  addAgentToRegistry(reg, 'agent-a', { name: 'agent-a', skillsPath: agentADir, linkType: 'copy', available: true });
-  addAgentToRegistry(reg, 'agent-b', { name: 'agent-b', skillsPath: agentBDir, linkType: 'copy', available: true });
+  addAgentToRegistry(reg, 'agent-a', { name: 'agent-a', skillsPath: agentADir, linkType: 'copy', available: true, enabled: true });
+  addAgentToRegistry(reg, 'agent-b', { name: 'agent-b', skillsPath: agentBDir, linkType: 'copy', available: true, enabled: true });
   saveRegistry(reg, hubDir);
 });
 

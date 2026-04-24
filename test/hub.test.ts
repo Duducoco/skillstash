@@ -11,7 +11,7 @@ import {
   initHub,
   listHubSkills,
 } from '../src/core/hub.js';
-import { createEmptyRegistry, addSkillToRegistry } from '../src/core/registry.js';
+import { createEmptyRegistry, addSkillToRegistry, addAgentToRegistry } from '../src/core/registry.js';
 
 let tmpDir: string;
 let hubDir: string;
@@ -76,6 +76,29 @@ describe('loadRegistry', () => {
     const loaded = loadRegistry(hubDir);
     expect(loaded.skills['test-skill']).toBeDefined();
     expect(loaded.skills['test-skill'].version).toBe('1.0.0');
+  });
+
+  it('normalizes agents missing enabled field (backward compat)', () => {
+    fs.mkdirSync(hubDir, { recursive: true });
+    // Write a registry JSON with an agent lacking the enabled field
+    const oldRegJson = JSON.stringify({
+      version: '1.0',
+      lastSync: null,
+      skills: {},
+      agents: {
+        claude: {
+          name: 'claude',
+          skillsPath: '/home/user/.claude/skills',
+          linkType: 'copy',
+          available: true,
+          // no enabled field
+        },
+      },
+    });
+    fs.writeFileSync(path.join(hubDir, 'registry.json'), oldRegJson, 'utf-8');
+
+    const loaded = loadRegistry(hubDir);
+    expect(loaded.agents['claude'].enabled).toBe(true);
   });
 });
 

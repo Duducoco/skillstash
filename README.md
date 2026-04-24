@@ -56,6 +56,7 @@ npx skillstash --help
 
 # 1. Initialize the hub with a remote repository
 skillstash init git@github.com:yourname/my-skills.git
+# → Interactive prompt: choose which agents to manage (space to toggle, enter to confirm)
 
 # 2. Install skills (from ClawHub, GitHub, or local path)
 skillstash install clawhub:finance-ops
@@ -95,10 +96,12 @@ skillstash sync    # pull + verify + link + push
 
 Initialize the skills-hub with a remote Git repository. The hub is always at `~/.skillstash/skills-hub`.
 
+During init, you'll be prompted to choose which agents to manage. Use arrow keys to navigate, space to toggle selection, and enter to confirm. You can change this later with `skillstash agents`.
+
 | Remote Status | Behavior |
 |---|---|
-| **Empty repo** | Create hub locally → auto-import existing agent skills → git push |
-| **Non-empty with `registry.json`** | Clone hub → re-detect local agents → import new local skills → git push |
+| **Empty repo** | Create hub locally → select agents → auto-import existing agent skills → git push |
+| **Non-empty with `registry.json`** | Clone hub → select agents → re-detect local agents → import new local skills → git push |
 | **Non-empty without `registry.json`** | ❌ Reject — not a skillstash repo. Prompt to create a new empty repo |
 
 ```bash
@@ -192,6 +195,19 @@ skillstash remove old-skill              # Remove everywhere
 skillstash remove old-skill --keep-agents  # Only remove from hub
 ```
 
+### `skillstash agents`
+
+Manage which agents skillstash syncs with. Only enabled agents receive skills during `link` and `sync`.
+
+```bash
+skillstash agents list              # Show all agents with available/managed status
+skillstash agents select            # Interactively choose which agents to manage
+skillstash agents enable claude     # Enable a specific agent
+skillstash agents disable codex     # Disable an agent (skip for link/sync)
+```
+
+The `select` subcommand shows the same interactive checkbox UI as `init` — arrow keys to navigate, space to toggle, enter to confirm. Shortcuts: `a` to select all, `i` to invert selection.
+
 ## Supported Agents
 
 | Agent | Skills Directory | Auto-detected |
@@ -201,6 +217,8 @@ skillstash remove old-skill --keep-agents  # Only remove from hub
 | Codex | `~/.codex/skills/` | ✅ |
 | Claude Code | `~/.claude/skills/` | ✅ |
 | Agents (generic) | `~/.agents/skills/` | ✅ |
+
+All agents are auto-detected, but you can choose which ones to manage via `skillstash init` or `skillstash agents select`. Disabled agents are still detected but skipped during `link` and `sync`.
 
 ## Registry Schema
 
@@ -226,7 +244,15 @@ The `registry.json` in the hub tracks everything:
       "name": "workbuddy",
       "skillsPath": "~/.workbuddy/skills",
       "linkType": "copy",
-      "available": true
+      "available": true,
+      "enabled": true
+    },
+    "codex": {
+      "name": "codex",
+      "skillsPath": "~/.codex/skills",
+      "linkType": "copy",
+      "available": true,
+      "enabled": false
     }
   }
 }
@@ -239,6 +265,7 @@ skillstash/
 ├── src/
 │   ├── index.ts              # CLI entry point
 │   ├── commands/
+│   │   ├── agents.ts          # skillstash agents
 │   │   ├── init.ts           # skillstash init <remote-url>
 │   │   ├── install.ts        # skillstash install
 │   │   ├── link.ts           # skillstash link
@@ -254,7 +281,8 @@ skillstash/
 │   │   └── skill.ts          # SKILL.md parsing & linting
 │   └── utils/
 │       ├── fs.ts             # File system utilities
-│       └── logger.ts         # Colored logging
+│       ├── logger.ts         # Colored logging
+│       └── prompt.ts         # Interactive agent selection (checkbox)
 ├── docs/
 │   └── images/               # Assets
 ├── package.json

@@ -45,7 +45,7 @@ beforeEach(() => {
   reg.agents = {};
   addSkillToRegistry(reg, 'finance-ops', { version: '1.0.0', source: 'local', hash: hashDir(path.join(skillsDir, 'finance-ops')) });
   addSkillToRegistry(reg, 'anti-distill', { version: '1.0.0', source: 'local', hash: hashDir(path.join(skillsDir, 'anti-distill')) });
-  addAgentToRegistry(reg, 'testagent', { name: 'testagent', skillsPath: agentDir, linkType: 'copy', available: true });
+  addAgentToRegistry(reg, 'testagent', { name: 'testagent', skillsPath: agentDir, linkType: 'copy', available: true, enabled: true });
   saveRegistry(reg, hubDir);
 });
 
@@ -122,7 +122,7 @@ describe('link: copies skills to agent directory', () => {
   it('--agent links only to the specified agent', () => {
     const other = path.join(tmpDir, 'other-agent');
     const reg = loadRegistry(hubDir);
-    addAgentToRegistry(reg, 'other', { name: 'other', skillsPath: other, linkType: 'copy', available: true });
+    addAgentToRegistry(reg, 'other', { name: 'other', skillsPath: other, linkType: 'copy', available: true, enabled: true });
     saveRegistry(reg, hubDir);
 
     doLink({ agent: 'testagent' });

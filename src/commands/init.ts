@@ -2,7 +2,8 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { Command } from 'commander';
 import { initHub, hubExists, getDefaultHubPath, loadRegistry, saveRegistry, detectAgents, getSkillsPath } from '../core/hub.js';
-import { addSkillToRegistry } from '../core/registry.js';
+import { addSkillToRegistry, setAgentEnabled } from '../core/registry.js';
+import { selectAgents } from '../utils/prompt.js';
 import { gitInit, gitProbeRemote, gitClone, gitAddRemote, gitPushSetUpstream, gitCommit } from '../core/git.js';
 import { copyDirRecursive, hashDir, exists } from '../utils/fs.js';
 import { getSkillVersion, getSkillDescription, lintSkill } from '../core/skill.js';
@@ -159,7 +160,11 @@ export function registerInitCommand(program: Command): void {
 /**
  * Case 1: Empty remote → create fresh hub, push to remote
  */
-export async function initFreshHub(hubPath: string, remoteUrl: string): Promise<void> {
+export async function initFreshHub(
+  hubPath: string,
+  remoteUrl: string,
+  agentSelector?: (agents: import('../core/registry.js').AgentConfig[]) => Promise<Set<string>>
+): Promise<void> {
   // Create hub structure
   const result = initHub(hubPath);
   if (!result.created) {
@@ -176,9 +181,18 @@ export async function initFreshHub(hubPath: string, remoteUrl: string): Promise<
   }
   logger.success('Git repository initialized');
 
-  // Import any existing agent skills
+  // Interactive agent selection
   const registry = loadRegistry(hubPath);
-  const agents = Object.values(registry.agents).filter((a) => a.available);
+  const allAgents = Object.values(registry.agents);
+  const selector = agentSelector ?? selectAgents;
+  const selectedNames = await selector(allAgents);
+  for (const agent of allAgents) {
+    setAgentEnabled(registry, agent.name, selectedNames.has(agent.name));
+  }
+  saveRegistry(registry, hubPath);
+
+  // Import any existing agent skills (only from managed agents)
+  const agents = Object.values(registry.agents).filter((a) => a.available && a.enabled);
 
   if (agents.length > 0) {
     logger.step('Scanning agent directories for existing skills...');
@@ -225,7 +239,11 @@ export async function initFreshHub(hubPath: string, remoteUrl: string): Promise<
 /**
  * Case 2: Non-empty remote with registry.json → clone + import agent skills
  */
-export async function cloneAndImport(hubPath: string, remoteUrl: string): Promise<void> {
+export async function cloneAndImport(
+  hubPath: string,
+  remoteUrl: string,
+  agentSelector?: (agents: import('../core/registry.js').AgentConfig[]) => Promise<Set<string>>
+): Promise<void> {
   // Ensure parent directory exists
   fs.mkdirSync(path.dirname(hubPath), { recursive: true });
 
@@ -258,10 +276,18 @@ export async function cloneAndImport(hubPath: string, remoteUrl: string): Promis
       registry.agents[agent.name].available = agent.available;
     }
   }
+
+  // Interactive agent selection
+  const allAgents = Object.values(registry.agents);
+  const selector = agentSelector ?? selectAgents;
+  const selectedNames = await selector(allAgents);
+  for (const agent of allAgents) {
+    setAgentEnabled(registry, agent.name, selectedNames.has(agent.name));
+  }
   saveRegistry(registry, hubPath);
 
-  // Import any agent skills not yet in the hub
-  const availableAgents = Object.values(registry.agents).filter((a) => a.available);
+  // Import any agent skills not yet in the hub (only from managed agents)
+  const availableAgents = Object.values(registry.agents).filter((a) => a.available && a.enabled);
   if (availableAgents.length > 0) {
     logger.step('Scanning agent directories for new skills...');
     const discovered = new Map<string, DiscoveredSkill>();
@@ -315,10 +341,13 @@ function showInitSummary(hubPath: string, registry: ReturnType<typeof loadRegist
   logger.info('');
   logger.info('Detected agents:');
   for (const agent of agents) {
-    const status = agent.available
+    const availStatus = agent.available
       ? chalk.green('✓ available')
       : chalk.gray('✗ not found');
-    logger.info(`  ${chalk.bold(agent.name)}: ${status} → ${chalk.gray(agent.skillsPath)}`);
+    const managedStatus = agent.enabled
+      ? chalk.green('✓ managed')
+      : chalk.yellow('✗ disabled');
+    logger.info(`  ${chalk.bold(agent.name)}: ${availStatus}  ${managedStatus} → ${chalk.gray(agent.skillsPath)}`);
   }
 
   logger.info('');

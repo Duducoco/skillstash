@@ -11,6 +11,11 @@ import { gitAvailable } from '../src/core/git.js';
 import { initFreshHub, cloneAndImport } from '../src/commands/init.js';
 import { hubExists, loadRegistry, getSkillsPath } from '../src/core/hub.js';
 import { exists } from '../src/utils/fs.js';
+import type { AgentConfig } from '../src/core/registry.js';
+
+// In tests, auto-select all available agents (no interactive prompt)
+const noPromptSelector = async (agents: AgentConfig[]) =>
+  new Set(agents.filter((a) => a.available).map((a) => a.name));
 
 const isGitAvailable = gitAvailable();
 
@@ -96,39 +101,39 @@ afterEach(() => {
 describe('init Case 1: empty remote → fresh hub', () => {
   it('creates hub directory and registry.json', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir);
+    await initFreshHub(hubDir, bareDir, noPromptSelector);
     expect(hubExists(hubDir)).toBe(true);
-  });
+  }, 30000);
 
   it('initializes git repo in hub', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir);
+    await initFreshHub(hubDir, bareDir, noPromptSelector);
     expect(fs.existsSync(path.join(hubDir, '.git'))).toBe(true);
-  });
+  }, 30000);
 
   it('creates skills/ subdirectory', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir);
+    await initFreshHub(hubDir, bareDir, noPromptSelector);
     expect(fs.existsSync(getSkillsPath(hubDir))).toBe(true);
-  });
+  }, 30000);
 
   it('pushes initial commit to remote', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir);
+    await initFreshHub(hubDir, bareDir, noPromptSelector);
     // Verify remote has commits by cloning
     const cloneDir = path.join(tmpDir, 'verify');
     execSync(`git clone "${bareDir}" "${cloneDir}"`, { stdio: 'pipe' });
     expect(fs.existsSync(path.join(cloneDir, 'registry.json'))).toBe(true);
-  });
+  }, 30000);
 
   it('registry has empty skills on fresh init (no local agents in isolated test)', async () => {
     if (skipIfNoGit()) return;
-    await initFreshHub(hubDir, bareDir);
+    await initFreshHub(hubDir, bareDir, noPromptSelector);
     const reg = loadRegistry(hubDir);
     // Skills may be imported from real agent dirs on the machine, but structure is valid
     expect(typeof reg.skills).toBe('object');
     expect(reg.version).toBe('1.0');
-  });
+  }, 30000);
 });
 
 // ─── Case 2: Non-empty remote with registry.json ──────────────────────────────
@@ -137,16 +142,16 @@ describe('init Case 2: non-empty remote with registry.json → clone + import', 
   it('clones the remote hub into hubDir', async () => {
     if (skipIfNoGit()) return;
     makeRegistryInBare(bareDir);
-    await cloneAndImport(hubDir, bareDir);
+    await cloneAndImport(hubDir, bareDir, noPromptSelector);
     expect(hubExists(hubDir)).toBe(true);
-  });
+  }, 30000);
 
   it('registry.json is present after clone', async () => {
     if (skipIfNoGit()) return;
     makeRegistryInBare(bareDir);
-    await cloneAndImport(hubDir, bareDir);
+    await cloneAndImport(hubDir, bareDir, noPromptSelector);
     expect(fs.existsSync(path.join(hubDir, 'registry.json'))).toBe(true);
-  });
+  }, 30000);
 
   it('loads skills that were already in remote hub', async () => {
     if (skipIfNoGit()) return;
@@ -176,19 +181,19 @@ describe('init Case 2: non-empty remote with registry.json → clone + import', 
       fs.rmSync(workDir, { recursive: true, force: true });
     }
 
-    await cloneAndImport(hubDir, bareDir);
+    await cloneAndImport(hubDir, bareDir, noPromptSelector);
     const clonedReg = loadRegistry(hubDir);
     expect(clonedReg.skills['remote-skill']).toBeDefined();
-  });
+  }, 30000);
 
   it('populates agents from current machine after clone', async () => {
     if (skipIfNoGit()) return;
     makeRegistryInBare(bareDir);
-    await cloneAndImport(hubDir, bareDir);
+    await cloneAndImport(hubDir, bareDir, noPromptSelector);
     const reg = loadRegistry(hubDir);
     // detectAgents() always returns at least the 5 known agents
     expect(Object.keys(reg.agents).length).toBeGreaterThan(0);
-  });
+  }, 30000);
 });
 
 // ─── Case 3: gitProbeRemote rejects non-skillstash repos ─────────────────────

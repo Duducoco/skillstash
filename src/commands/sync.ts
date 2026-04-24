@@ -95,7 +95,7 @@ export function registerSyncCommand(program: Command): void {
 
       // Step 3: Link to agents
       if (options.link) {
-        const agents = Object.values(registry.agents).filter((a) => a.available);
+        const agents = Object.values(registry.agents).filter((a) => a.available && a.enabled);
         const enabledSkills = skillNames.filter((s) => registry.skills[s].enabled);
 
         if (agents.length === 0) {

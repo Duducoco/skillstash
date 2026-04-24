@@ -89,7 +89,7 @@ export function registerImportCommand(program: Command): void {
       }
 
       const registry = loadRegistry(hubPath);
-      const agents = Object.values(registry.agents).filter((a) => a.available);
+      const agents = Object.values(registry.agents).filter((a) => a.available && a.enabled);
       const targetAgents = options.agent
         ? agents.filter((a) => a.name === options.agent)
         : agents;
