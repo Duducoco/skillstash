@@ -220,6 +220,189 @@ export function gitPull(hubPath: string): boolean {
 }
 
 /**
+ * Fetch from remote without modifying working tree
+ */
+export function gitFetch(hubPath: string): boolean {
+  if (!gitAvailable()) return false;
+  try {
+    execSync('git fetch origin', { cwd: hubPath, stdio: 'pipe', timeout: 60_000 });
+    return true;
+  } catch (e) {
+    logger.warn(`Git fetch failed: ${(e as Error).message}`);
+    return false;
+  }
+}
+
+/**
+ * Count commits reachable from toRef but not from fromRef.
+ * Returns 0 on any error (e.g. FETCH_HEAD doesn't exist yet).
+ */
+export function gitRevCount(hubPath: string, fromRef: string, toRef: string): number {
+  if (!gitAvailable()) return 0;
+  try {
+    const out = execSync(`git rev-list ${fromRef}..${toRef} --count`, {
+      cwd: hubPath,
+      stdio: 'pipe',
+    }).toString().trim();
+    return parseInt(out, 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Get the merge-base commit hash between HEAD and FETCH_HEAD.
+ */
+export function gitMergeBase(hubPath: string): string | null {
+  if (!gitAvailable()) return null;
+  try {
+    return execSync('git merge-base HEAD FETCH_HEAD', {
+      cwd: hubPath,
+      stdio: 'pipe',
+    }).toString().trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Return the content of a file at a specific git ref.
+ * filePath must use forward slashes (e.g. 'registry.json').
+ * Returns null if the file doesn't exist at that ref.
+ */
+export function gitShowFileContent(hubPath: string, ref: string, filePath: string): string | null {
+  if (!gitAvailable()) return null;
+  try {
+    return execSync(`git show ${ref}:${filePath}`, {
+      cwd: hubPath,
+      stdio: 'pipe',
+    }).toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Attempt a merge without committing (--no-commit --no-ff).
+ * Returns true if merge completed with no conflicts, false if conflicts exist.
+ */
+export function gitMergeNoCommit(hubPath: string, ref: string): boolean {
+  if (!gitAvailable()) return false;
+  try {
+    execSync(`git merge --no-commit --no-ff ${ref}`, { cwd: hubPath, stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fast-forward merge using FETCH_HEAD.
+ */
+export function gitMergeFFOnly(hubPath: string): boolean {
+  if (!gitAvailable()) return false;
+  try {
+    execSync('git merge --ff-only FETCH_HEAD', { cwd: hubPath, stdio: 'pipe' });
+    return true;
+  } catch (e) {
+    logger.warn(`Fast-forward merge failed: ${(e as Error).message}`);
+    return false;
+  }
+}
+
+/**
+ * Abort an in-progress merge.
+ */
+export function gitMergeAbort(hubPath: string): void {
+  if (!gitAvailable()) return;
+  try {
+    execSync('git merge --abort', { cwd: hubPath, stdio: 'pipe' });
+  } catch { /* best effort */ }
+}
+
+/**
+ * Check if the repo is currently in MERGING state (.git/MERGE_HEAD exists).
+ */
+export function gitIsInMergeState(hubPath: string): boolean {
+  return fs.existsSync(path.join(hubPath, '.git', 'MERGE_HEAD'));
+}
+
+/**
+ * List files that have merge conflicts.
+ * Uses --diff-filter=UUDA to catch both-modified (UU) and delete/modify (DU, UD, DA) conflicts.
+ */
+export function gitListConflictedFiles(hubPath: string): string[] {
+  if (!gitAvailable()) return [];
+  try {
+    const out = execSync('git diff --name-only --diff-filter=UUDA', {
+      cwd: hubPath,
+      stdio: 'pipe',
+    }).toString().trim();
+    return out ? out.split('\n').filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Checkout the "ours" version of a conflicted file.
+ * gitPath must use forward slashes.
+ */
+export function gitCheckoutOurs(hubPath: string, gitPath: string): void {
+  if (!gitAvailable()) return;
+  try {
+    execSync(`git checkout --ours -- "${gitPath}"`, { cwd: hubPath, stdio: 'pipe' });
+  } catch (e) {
+    logger.warn(`checkout --ours failed for ${gitPath}: ${(e as Error).message}`);
+  }
+}
+
+/**
+ * Checkout the "theirs" version of a conflicted file.
+ * gitPath must use forward slashes.
+ */
+export function gitCheckoutTheirs(hubPath: string, gitPath: string): void {
+  if (!gitAvailable()) return;
+  try {
+    execSync(`git checkout --theirs -- "${gitPath}"`, { cwd: hubPath, stdio: 'pipe' });
+  } catch (e) {
+    logger.warn(`checkout --theirs failed for ${gitPath}: ${(e as Error).message}`);
+  }
+}
+
+/**
+ * Stage a specific file path.
+ * gitPath must use forward slashes.
+ */
+export function gitStagePath(hubPath: string, gitPath: string): void {
+  if (!gitAvailable()) return;
+  try {
+    execSync(`git add "${gitPath}"`, { cwd: hubPath, stdio: 'pipe' });
+  } catch (e) {
+    logger.warn(`git add failed for ${gitPath}: ${(e as Error).message}`);
+  }
+}
+
+/**
+ * Commit the current staged state (does NOT run git add -A).
+ * Use this when in MERGING state to avoid staging unresolved conflict markers.
+ */
+export function gitCommitMerge(hubPath: string, message: string): boolean {
+  if (!gitAvailable()) return false;
+  try {
+    ensureGitUser(hubPath);
+    execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, {
+      cwd: hubPath,
+      stdio: 'pipe',
+    });
+    return true;
+  } catch (e) {
+    logger.warn(`Git merge commit failed: ${(e as Error).message}`);
+    return false;
+  }
+}
+
+/**
  * Push to remote
  */
 export function gitPush(hubPath: string): boolean {

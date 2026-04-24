@@ -90,6 +90,32 @@ skillstash init git@github.com:yourname/my-skills.git
 skillstash sync    # pull + verify + link + push
 ```
 
+### Conflict Resolution
+
+`skillstash sync` handles merge conflicts automatically — no manual intervention required in most cases.
+
+**How it works:**
+
+When two devices independently install or modify skills, `sync` uses a smart three-way merge instead of a plain `git pull`:
+
+1. `git fetch` — downloads remote changes without touching local files
+2. If both sides have diverged, skillstash performs an application-level merge of `registry.json`:
+   - **Newer `updatedAt` wins** when the same skill was modified on both sides
+   - Remote additions are merged in; local additions are preserved
+   - A deletion on one side is respected unless the other side modified the skill after the deletion
+3. Any skill directory file conflicts are resolved automatically based on the same registry decision
+4. A merge commit is created and the sync continues normally
+
+**Uncommitted local changes** are automatically committed before fetching, so they're never at risk.
+
+**If the hub is stuck in a MERGING state** (e.g. from a previous interrupted sync):
+
+```bash
+cd ~/.skillstash/skills-hub && git merge --abort
+# Then re-run:
+skillstash sync
+```
+
 ## Command Reference
 
 ### `skillstash init <remote-url>`
