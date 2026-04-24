@@ -194,6 +194,8 @@ describe('gitPushSetUpstream + gitPull + gitPush', () => {
     // Repo B: clone, add commit, push
     const repoBDir = path.join(tmpDir, 'repob');
     execSync(`git clone "${bareDir}" "${repoBDir}"`, { stdio: 'pipe' });
+    execSync('git config user.email "test@test.com"', { cwd: repoBDir, stdio: 'pipe' });
+    execSync('git config user.name "test"', { cwd: repoBDir, stdio: 'pipe' });
     writeFile(repoBDir, 'b.txt', 'b');
     execSync('git add -A && git commit -m "add b"', { cwd: repoBDir, stdio: 'pipe', shell: 'bash' });
     execSync('git push', { cwd: repoBDir, stdio: 'pipe' });
