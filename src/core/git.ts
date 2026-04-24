@@ -9,7 +9,7 @@ import { logger } from '../utils/logger.js';
  */
 export function gitAvailable(): boolean {
   try {
-    execSync('git --version', { stdio: 'pipe' });
+    execSync('git --version', { stdio: 'pipe', timeout: 10_000 });
     return true;
   } catch {
     return false;
@@ -27,7 +27,7 @@ export function gitInit(hubPath: string): boolean {
 
   try {
     if (!fs.existsSync(path.join(hubPath, '.git'))) {
-      execSync('git init', { cwd: hubPath, stdio: 'pipe' });
+      execSync('git init', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
       logger.success('Initialized git repository in hub');
     }
     return true;
@@ -129,12 +129,12 @@ export function gitAddRemote(hubPath: string, remoteUrl: string): boolean {
   if (!gitAvailable()) return false;
 
   try {
-    execSync(`git remote add origin "${remoteUrl}"`, { cwd: hubPath, stdio: 'pipe' });
+    execSync(`git remote add origin "${remoteUrl}"`, { cwd: hubPath, stdio: 'pipe', timeout: 15_000 });
     return true;
   } catch (e) {
     // Remote might already exist — try set-url instead
     try {
-      execSync(`git remote set-url origin "${remoteUrl}"`, { cwd: hubPath, stdio: 'pipe' });
+      execSync(`git remote set-url origin "${remoteUrl}"`, { cwd: hubPath, stdio: 'pipe', timeout: 15_000 });
       return true;
     } catch (e2) {
       logger.warn(`Failed to add/set remote: ${(e2 as Error).message}`);
@@ -166,14 +166,14 @@ export function gitPushSetUpstream(hubPath: string, branch: string = 'main'): bo
  */
 function ensureGitUser(hubPath: string): void {
   try {
-    execSync('git config user.name', { cwd: hubPath, stdio: 'pipe' });
+    execSync('git config user.name', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   } catch {
-    execSync('git config user.name "skillstash"', { cwd: hubPath, stdio: 'pipe' });
+    execSync('git config user.name "skillstash"', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   }
   try {
-    execSync('git config user.email', { cwd: hubPath, stdio: 'pipe' });
+    execSync('git config user.email', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   } catch {
-    execSync('git config user.email "skillstash@local"', { cwd: hubPath, stdio: 'pipe' });
+    execSync('git config user.email "skillstash@local"', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   }
 }
 
@@ -185,10 +185,10 @@ export function gitCommit(hubPath: string, message: string): boolean {
 
   try {
     ensureGitUser(hubPath);
-    execSync('git add -A', { cwd: hubPath, stdio: 'pipe' });
+    execSync('git add -A', { cwd: hubPath, stdio: 'pipe', timeout: 30_000 });
     // Check if there's anything to commit
     try {
-      execSync('git diff --cached --quiet', { cwd: hubPath, stdio: 'pipe' });
+      execSync('git diff --cached --quiet', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
       return true; // nothing to commit
     } catch {
       // there are changes
@@ -196,6 +196,7 @@ export function gitCommit(hubPath: string, message: string): boolean {
     execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, {
       cwd: hubPath,
       stdio: 'pipe',
+      timeout: 30_000,
     });
     return true;
   } catch (e) {
@@ -207,11 +208,13 @@ export function gitCommit(hubPath: string, message: string): boolean {
 /**
  * Pull from remote
  */
-export function gitPull(hubPath: string): boolean {
+export function gitPull(hubPath: string, onProgress?: (msg: string) => void): boolean {
   if (!gitAvailable()) return false;
 
   try {
-    execSync('git pull', { cwd: hubPath, stdio: 'pipe' });
+    onProgress?.('git pull: starting...');
+    execSync('git pull', { cwd: hubPath, stdio: 'pipe', timeout: 60_000 });
+    onProgress?.('git pull: complete');
     return true;
   } catch (e) {
     logger.warn(`Git pull failed: ${(e as Error).message}`);
@@ -222,10 +225,12 @@ export function gitPull(hubPath: string): boolean {
 /**
  * Fetch from remote without modifying working tree
  */
-export function gitFetch(hubPath: string): boolean {
+export function gitFetch(hubPath: string, onProgress?: (msg: string) => void): boolean {
   if (!gitAvailable()) return false;
   try {
+    onProgress?.('git fetch: starting...');
     execSync('git fetch origin', { cwd: hubPath, stdio: 'pipe', timeout: 60_000 });
+    onProgress?.('git fetch: complete');
     return true;
   } catch (e) {
     logger.warn(`Git fetch failed: ${(e as Error).message}`);
@@ -243,6 +248,7 @@ export function gitRevCount(hubPath: string, fromRef: string, toRef: string): nu
     const out = execSync(`git rev-list ${fromRef}..${toRef} --count`, {
       cwd: hubPath,
       stdio: 'pipe',
+      timeout: 10_000,
     }).toString().trim();
     return parseInt(out, 10) || 0;
   } catch {
@@ -259,50 +265,40 @@ export function gitMergeBase(hubPath: string): string | null {
     return execSync('git merge-base HEAD FETCH_HEAD', {
       cwd: hubPath,
       stdio: 'pipe',
+      timeout: 10_000,
     }).toString().trim() || null;
   } catch {
     return null;
   }
 }
 
-/**
- * Return the content of a file at a specific git ref.
- * filePath must use forward slashes (e.g. 'registry.json').
- * Returns null if the file doesn't exist at that ref.
- */
 export function gitShowFileContent(hubPath: string, ref: string, filePath: string): string | null {
   if (!gitAvailable()) return null;
   try {
     return execSync(`git show ${ref}:${filePath}`, {
       cwd: hubPath,
       stdio: 'pipe',
+      timeout: 10_000,
     }).toString();
   } catch {
     return null;
   }
 }
 
-/**
- * Attempt a merge without committing (--no-commit --no-ff).
- * Returns true if merge completed with no conflicts, false if conflicts exist.
- */
 export function gitMergeNoCommit(hubPath: string, ref: string): boolean {
   if (!gitAvailable()) return false;
   try {
-    execSync(`git merge --no-commit --no-ff ${ref}`, { cwd: hubPath, stdio: 'pipe' });
+    execSync(`git merge --no-commit --no-ff ${ref}`, { cwd: hubPath, stdio: 'pipe', timeout: 15_000 });
     return true;
   } catch {
     return false;
   }
 }
 
-/**
- * Fast-forward merge using FETCH_HEAD.
- */
 export function gitMergeFFOnly(hubPath: string): boolean {
   if (!gitAvailable()) return false;
   try {
-    execSync('git merge --ff-only FETCH_HEAD', { cwd: hubPath, stdio: 'pipe' });
+    execSync('git merge --ff-only FETCH_HEAD', { cwd: hubPath, stdio: 'pipe', timeout: 30_000 });
     return true;
   } catch (e) {
     logger.warn(`Fast-forward merge failed: ${(e as Error).message}`);
@@ -310,13 +306,10 @@ export function gitMergeFFOnly(hubPath: string): boolean {
   }
 }
 
-/**
- * Abort an in-progress merge.
- */
 export function gitMergeAbort(hubPath: string): void {
   if (!gitAvailable()) return;
   try {
-    execSync('git merge --abort', { cwd: hubPath, stdio: 'pipe' });
+    execSync('git merge --abort', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   } catch { /* best effort */ }
 }
 
@@ -327,16 +320,13 @@ export function gitIsInMergeState(hubPath: string): boolean {
   return fs.existsSync(path.join(hubPath, '.git', 'MERGE_HEAD'));
 }
 
-/**
- * List files that have merge conflicts.
- * Uses --diff-filter=UUDA to catch both-modified (UU) and delete/modify (DU, UD, DA) conflicts.
- */
 export function gitListConflictedFiles(hubPath: string): string[] {
   if (!gitAvailable()) return [];
   try {
     const out = execSync('git diff --name-only --diff-filter=UUDA', {
       cwd: hubPath,
       stdio: 'pipe',
+      timeout: 10_000,
     }).toString().trim();
     return out ? out.split('\n').filter(Boolean) : [];
   } catch {
@@ -344,49 +334,33 @@ export function gitListConflictedFiles(hubPath: string): string[] {
   }
 }
 
-/**
- * Checkout the "ours" version of a conflicted file.
- * gitPath must use forward slashes.
- */
 export function gitCheckoutOurs(hubPath: string, gitPath: string): void {
   if (!gitAvailable()) return;
   try {
-    execSync(`git checkout --ours -- "${gitPath}"`, { cwd: hubPath, stdio: 'pipe' });
+    execSync(`git checkout --ours -- "${gitPath}"`, { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   } catch (e) {
     logger.warn(`checkout --ours failed for ${gitPath}: ${(e as Error).message}`);
   }
 }
 
-/**
- * Checkout the "theirs" version of a conflicted file.
- * gitPath must use forward slashes.
- */
 export function gitCheckoutTheirs(hubPath: string, gitPath: string): void {
   if (!gitAvailable()) return;
   try {
-    execSync(`git checkout --theirs -- "${gitPath}"`, { cwd: hubPath, stdio: 'pipe' });
+    execSync(`git checkout --theirs -- "${gitPath}"`, { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   } catch (e) {
     logger.warn(`checkout --theirs failed for ${gitPath}: ${(e as Error).message}`);
   }
 }
 
-/**
- * Stage a specific file path.
- * gitPath must use forward slashes.
- */
 export function gitStagePath(hubPath: string, gitPath: string): void {
   if (!gitAvailable()) return;
   try {
-    execSync(`git add "${gitPath}"`, { cwd: hubPath, stdio: 'pipe' });
+    execSync(`git add "${gitPath}"`, { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   } catch (e) {
     logger.warn(`git add failed for ${gitPath}: ${(e as Error).message}`);
   }
 }
 
-/**
- * Commit the current staged state (does NOT run git add -A).
- * Use this when in MERGING state to avoid staging unresolved conflict markers.
- */
 export function gitCommitMerge(hubPath: string, message: string): boolean {
   if (!gitAvailable()) return false;
   try {
@@ -394,6 +368,7 @@ export function gitCommitMerge(hubPath: string, message: string): boolean {
     execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, {
       cwd: hubPath,
       stdio: 'pipe',
+      timeout: 30_000,
     });
     return true;
   } catch (e) {
@@ -402,14 +377,13 @@ export function gitCommitMerge(hubPath: string, message: string): boolean {
   }
 }
 
-/**
- * Push to remote
- */
-export function gitPush(hubPath: string): boolean {
+export function gitPush(hubPath: string, onProgress?: (msg: string) => void): boolean {
   if (!gitAvailable()) return false;
 
   try {
-    execSync('git push', { cwd: hubPath, stdio: 'pipe' });
+    onProgress?.('git push: starting...');
+    execSync('git push', { cwd: hubPath, stdio: 'pipe', timeout: 120_000 });
+    onProgress?.('git push: complete');
     return true;
   } catch (e) {
     logger.warn(`Git push failed: ${(e as Error).message}`);
@@ -417,14 +391,11 @@ export function gitPush(hubPath: string): boolean {
   }
 }
 
-/**
- * Check if remote is configured
- */
 export function hasRemote(hubPath: string): boolean {
   if (!gitAvailable()) return false;
 
   try {
-    const output = execSync('git remote', { cwd: hubPath, stdio: 'pipe' })
+    const output = execSync('git remote', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 })
       .toString()
       .trim();
     return output.length > 0;
@@ -433,9 +404,6 @@ export function hasRemote(hubPath: string): boolean {
   }
 }
 
-/**
- * Get current branch name
- */
 export function currentBranch(hubPath: string): string | null {
   if (!gitAvailable()) return null;
 
@@ -443,6 +411,7 @@ export function currentBranch(hubPath: string): string | null {
     return execSync('git rev-parse --abbrev-ref HEAD', {
       cwd: hubPath,
       stdio: 'pipe',
+      timeout: 10_000,
     })
       .toString()
       .trim();
@@ -451,12 +420,14 @@ export function currentBranch(hubPath: string): string | null {
   }
 }
 
-/**
- * Shallow clone a remote repo to a temp directory and return the temp path.
- * Returns null on failure. Caller is responsible for cleanup.
- */
-export function gitShallowClone(remoteUrl: string): string | null {
-  if (!gitAvailable()) return null;
+export interface GitCloneResult {
+  path: string | null;
+  errorType?: 'not-found' | 'auth-failed' | 'timeout' | 'unknown';
+  errorMessage?: string;
+}
+
+export function gitShallowClone(remoteUrl: string): GitCloneResult {
+  if (!gitAvailable()) return { path: null, errorType: 'unknown', errorMessage: 'git not available' };
 
   const tmpDir = path.join(os.tmpdir(), `skillstash-gh-${Date.now()}`);
   try {
@@ -464,24 +435,33 @@ export function gitShallowClone(remoteUrl: string): string | null {
       stdio: 'pipe',
       timeout: 120_000,
     });
-    return tmpDir;
+    return { path: tmpDir };
   } catch (e) {
-    logger.warn(`Git shallow clone failed: ${(e as Error).message}`);
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch { /* best effort */ }
-    return null;
+
+    const stderr = (e as any).stderr?.toString() || '';
+    const msg = stderr || (e as Error).message;
+
+    let errorType: GitCloneResult['errorType'] = 'unknown';
+    if (/not found|404|does not exist|repository not found/i.test(msg)) {
+      errorType = 'not-found';
+    } else if (/authentication failed|permission denied|could not read username/i.test(msg)) {
+      errorType = 'auth-failed';
+    } else if (/timed? ?out|timeout/i.test(msg)) {
+      errorType = 'timeout';
+    }
+
+    return { path: null, errorType, errorMessage: msg };
   }
 }
 
-/**
- * Get short status
- */
 export function gitStatus(hubPath: string): string {
   if (!gitAvailable()) return 'git not available';
 
   try {
-    return execSync('git status --short', { cwd: hubPath, stdio: 'pipe' })
+    return execSync('git status --short', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 })
       .toString()
       .trim();
   } catch {

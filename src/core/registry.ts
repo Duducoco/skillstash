@@ -100,6 +100,7 @@ export interface LocalState {
   skillAgents: Record<string, string[]>;
   agentSkills?: Record<string, string[]>;
   language?: 'en' | 'zh';
+  customAgents?: import('./agents.js').AgentDefinition[];
 }
 
 export function createEmptyLocalState(): LocalState {

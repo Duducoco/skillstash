@@ -9,6 +9,8 @@ import {
   AgentConfig,
 } from './registry.js';
 import { ensureDir, readJson, writeJson, exists } from '../utils/fs.js';
+import { AgentDefinition, registerAgent, getAgentDefinitions, resolveSkillsPath } from './agents.js';
+import { withLock } from '../utils/lock.js';
 
 const SKILL_SYNC_DIR = '.skillstash';
 const HUB_DIR_NAME = 'skills-hub';
@@ -39,15 +41,18 @@ export function hubExists(hubPath?: string): boolean {
 function ensureGitignore(hubPath: string): void {
   ensureDir(hubPath);
   const gitignorePath = path.join(hubPath, '.gitignore');
-  const entry = 'local.json';
+  const entries = ['local.json', '.lock'];
   if (!exists(gitignorePath)) {
-    fs.writeFileSync(gitignorePath, entry + '\n', 'utf-8');
+    fs.writeFileSync(gitignorePath, entries.join('\n') + '\n', 'utf-8');
   } else {
-    const lines = fs.readFileSync(gitignorePath, 'utf-8').split('\n').map((l) => l.trim());
-    if (!lines.includes(entry)) {
-      const content = fs.readFileSync(gitignorePath, 'utf-8');
-      fs.appendFileSync(gitignorePath, (content.endsWith('\n') ? '' : '\n') + entry + '\n', 'utf-8');
+    let content = fs.readFileSync(gitignorePath, 'utf-8');
+    const lines = content.split('\n').map((l) => l.trim());
+    for (const entry of entries) {
+      if (!lines.includes(entry)) {
+        content = content.endsWith('\n') ? content + entry + '\n' : content + '\n' + entry + '\n';
+      }
     }
+    fs.writeFileSync(gitignorePath, content, 'utf-8');
   }
 }
 
@@ -60,17 +65,23 @@ export function loadLocalState(hubPath?: string): LocalState {
       state.agents[name].enabled = true;
     }
   }
+  // Register any persisted custom agents
+  for (const def of state.customAgents || []) {
+    registerAgent(def);
+  }
   return {
     lastSync: state.lastSync ?? null,
     agents: state.agents || {},
     skillAgents: state.skillAgents || {},
     agentSkills: state.agentSkills || {},
     language: state.language ?? 'en',
+    customAgents: state.customAgents || [],
   };
 }
 
 export function saveLocalState(state: LocalState, hubPath?: string): void {
-  writeJson(getLocalPath(hubPath), state);
+  const hp = hubPath || getDefaultHubPath();
+  withLock(hp, () => writeJson(getLocalPath(hp), state));
 }
 
 export function loadRegistry(hubPath?: string): Registry {
@@ -137,18 +148,20 @@ export function saveRegistry(registry: Registry, hubPath?: string): void {
     }
   }
 
-  writeJson(getRegistryPath(hp), { version: registry.version, skills: sharedSkills });
-
-  // Preserve language preference across registry saves
   const existingLocal = exists(getLocalPath(hp)) ? readJson<LocalState>(getLocalPath(hp)) : null;
-
-  saveLocalState({
+  const newLocal: LocalState = {
     lastSync: registry.lastSync,
     agents: registry.agents,
     skillAgents,
     agentSkills: registry.agentSkills || {},
     language: existingLocal?.language ?? 'en',
-  }, hp);
+    customAgents: existingLocal?.customAgents ?? [],
+  };
+
+  withLock(hp, () => {
+    writeJson(getRegistryPath(hp), { version: registry.version, skills: sharedSkills });
+    writeJson(getLocalPath(hp), newLocal);
+  });
 }
 
 export function initHub(hubPath?: string): { hubPath: string; created: boolean } {
@@ -175,25 +188,19 @@ export function initHub(hubPath?: string): { hubPath: string; created: boolean }
 }
 
 /**
- * Detect installed AI agents on the system
+ * Detect installed AI agents on the system using registered definitions
  */
 export function detectAgents(): AgentConfig[] {
-  const home = os.homedir();
-  const agentPaths: Array<{ name: string; skillsPath: string; linkType: 'copy' | 'symlink' | 'junction' }> = [
-    { name: 'workbuddy', skillsPath: path.join(home, '.workbuddy', 'skills'), linkType: 'copy' },
-    { name: 'codebuddy', skillsPath: path.join(home, '.codebuddy', 'skills'), linkType: 'copy' },
-    { name: 'codex', skillsPath: path.join(home, '.codex', 'skills'), linkType: 'copy' },
-    { name: 'claude', skillsPath: path.join(home, '.claude', 'skills'), linkType: 'copy' },
-    { name: 'agents', skillsPath: path.join(home, '.agents', 'skills'), linkType: 'copy' },
-  ];
-
-  return agentPaths.map((ap) => ({
-    name: ap.name,
-    skillsPath: ap.skillsPath,
-    linkType: ap.linkType,
-    available: fs.existsSync(path.dirname(ap.skillsPath)),
-    enabled: true,
-  }));
+  return getAgentDefinitions().map((def) => {
+    const skillsPath = resolveSkillsPath(def.skillsPath);
+    return {
+      name: def.name,
+      skillsPath,
+      linkType: def.linkType,
+      available: fs.existsSync(path.dirname(skillsPath)),
+      enabled: true,
+    };
+  });
 }
 
 /**
