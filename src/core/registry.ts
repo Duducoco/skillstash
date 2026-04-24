@@ -27,6 +27,7 @@ export interface Registry {
   lastSync: string | null;
   skills: Record<string, SkillMeta>;
   agents: Record<string, AgentConfig>;
+  agentSkills: Record<string, string[]>;
 }
 
 export function createEmptyRegistry(): Registry {
@@ -35,6 +36,7 @@ export function createEmptyRegistry(): Registry {
     lastSync: null,
     skills: {},
     agents: {},
+    agentSkills: {},
   };
 }
 
@@ -96,8 +98,9 @@ export interface LocalState {
   lastSync: string | null;
   agents: Record<string, AgentConfig>;
   skillAgents: Record<string, string[]>;
+  agentSkills?: Record<string, string[]>;
 }
 
 export function createEmptyLocalState(): LocalState {
-  return { lastSync: null, agents: {}, skillAgents: {} };
+  return { lastSync: null, agents: {}, skillAgents: {}, agentSkills: {} };
 }

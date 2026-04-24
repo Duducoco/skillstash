@@ -64,6 +64,7 @@ export function loadLocalState(hubPath?: string): LocalState {
     lastSync: state.lastSync ?? null,
     agents: state.agents || {},
     skillAgents: state.skillAgents || {},
+    agentSkills: state.agentSkills || {},
   };
 }
 
@@ -116,6 +117,7 @@ export function loadRegistry(hubPath?: string): Registry {
     skills,
     lastSync: local.lastSync,
     agents: local.agents,
+    agentSkills: local.agentSkills || {},
   };
 }
 
@@ -135,7 +137,12 @@ export function saveRegistry(registry: Registry, hubPath?: string): void {
   }
 
   writeJson(getRegistryPath(hp), { version: registry.version, skills: sharedSkills });
-  saveLocalState({ lastSync: registry.lastSync, agents: registry.agents, skillAgents }, hp);
+  saveLocalState({
+    lastSync: registry.lastSync,
+    agents: registry.agents,
+    skillAgents,
+    agentSkills: registry.agentSkills || {},
+  }, hp);
 }
 
 export function initHub(hubPath?: string): { hubPath: string; created: boolean } {

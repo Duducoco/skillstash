@@ -194,7 +194,13 @@ export function registerSyncCommand(program: Command): void {
           for (const agent of agents) {
             ensureDir(agent.skillsPath);
 
-            for (const skillName of enabledSkills) {
+            // Apply per-device skill assignment if configured
+            const deviceFilter = registry.agentSkills?.[agent.name];
+            const agentSkillList = deviceFilter !== undefined
+              ? enabledSkills.filter((s) => deviceFilter.includes(s))
+              : enabledSkills;
+
+            for (const skillName of agentSkillList) {
               const srcDir = path.join(skillsDir, skillName);
               const destDir = path.join(agent.skillsPath, skillName);
 
@@ -221,7 +227,7 @@ export function registerSyncCommand(program: Command): void {
                 .filter((d) => d.isDirectory())
                 .map((d) => d.name);
               for (const entry of agentDirEntries) {
-                if (!enabledSkills.includes(entry)) {
+                if (!agentSkillList.includes(entry)) {
                   logger.step(`  Removing unmanaged: ${agent.name}/${entry}`);
                   removeDir(path.join(agent.skillsPath, entry));
                 }

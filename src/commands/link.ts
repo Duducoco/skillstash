@@ -54,7 +54,13 @@ export function registerLinkCommand(program: Command): void {
         logger.info(`\n${chalk.bold(agent.name)} → ${chalk.gray(agent.skillsPath)}`);
         ensureDir(agent.skillsPath);
 
-        for (const skillName of skillNames) {
+        // Apply per-device skill assignment if configured
+        const deviceFilter = registry.agentSkills?.[agent.name];
+        const agentSkillNames = deviceFilter !== undefined
+          ? skillNames.filter((s) => deviceFilter.includes(s))
+          : skillNames;
+
+        for (const skillName of agentSkillNames) {
           const srcDir = path.join(skillsDir, skillName);
           const destDir = path.join(agent.skillsPath, skillName);
 
@@ -96,7 +102,7 @@ export function registerLinkCommand(program: Command): void {
             .map((d) => d.name);
 
           for (const entry of agentDirEntries) {
-            if (!skillNames.includes(entry)) {
+            if (!agentSkillNames.includes(entry)) {
               const removePath = path.join(agent.skillsPath, entry);
               logger.step(`  Removing unmanaged skill: ${entry}`);
               removeDir(removePath);

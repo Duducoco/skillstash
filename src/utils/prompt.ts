@@ -45,3 +45,31 @@ export async function promptLinkNow(): Promise<boolean> {
     default: true,
   });
 }
+
+/**
+ * Interactive per-agent skill selection.
+ * currentAssignment = undefined means "not configured yet" (pre-check all).
+ * Falls back to returning current assignment (or all) in non-TTY environments.
+ */
+export async function selectSkillsForAgent(
+  agentName: string,
+  skills: Array<{ name: string; version: string; description?: string }>,
+  currentAssignment: string[] | undefined,
+): Promise<string[]> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    return currentAssignment ?? skills.map((s) => s.name);
+  }
+
+  const choices = skills.map((s) => ({
+    value: s.name,
+    name: `${s.name.padEnd(24)}${chalk.gray(s.version.padEnd(10))}${s.description ?? ''}`,
+    checked: currentAssignment === undefined ? true : currentAssignment.includes(s.name),
+  }));
+
+  return checkbox({
+    message: `为 ${chalk.cyan(agentName)} 选择要启用的 skill（空格切换，回车确认，a 全选，i 反选）`,
+    choices,
+    required: false,
+    shortcuts: { all: 'a', invert: 'i' },
+  });
+}

@@ -14,6 +14,7 @@ import { registerRemoveCommand } from './commands/remove.js';
 import { registerImportCommand } from './commands/import.js';
 
 import { registerAgentsCommand } from './commands/agents.js';
+import { registerAssignCommand } from './commands/assign.js';
 
 const program = new Command();
 
@@ -33,6 +34,7 @@ registerDiffCommand(program);
 
 registerRemoveCommand(program);
 registerAgentsCommand(program);
+registerAssignCommand(program);
 registerImportCommand(program);
 
 // Custom help display
@@ -49,6 +51,8 @@ ${chalk.bold('Agent Management:')}
   $ skillstash agents select                Interactively choose which agents to manage
   $ skillstash agents enable <name>         Enable an agent for management
   $ skillstash agents disable <name>        Disable an agent (skip for link/sync)
+  $ skillstash assign                       Assign skills to agents on this device
+  $ skillstash assign --agent claude        Configure only a specific agent
 
 ${chalk.bold('Install Sources:')}
   ClawHub       skillstash install clawhub:finance-ops
