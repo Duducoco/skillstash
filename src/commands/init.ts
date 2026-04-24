@@ -121,7 +121,7 @@ export function registerInitCommand(program: Command): void {
         logger.warn(`Skills hub already exists at ${chalk.cyan(hubPath)}`);
         const reg = loadRegistry(hubPath);
         logger.info(`  Skills: ${Object.keys(reg.skills).length}, Agents: ${Object.keys(reg.agents).length}`);
-        logger.info(`  Use ${chalk.cyan('skill-sync sync')} to update, or delete the hub directory to re-initialize.`);
+        logger.info(`  Use ${chalk.cyan('skillstash sync')} to update, or delete the hub directory to re-initialize.`);
         return;
       }
 
@@ -137,19 +137,19 @@ export function registerInitCommand(program: Command): void {
 
       if (probe.empty) {
         // ─── Case 1: Empty remote → fresh init + push ───
-        logger.info('Remote repository is empty. Initializing a new skill-sync hub...');
+        logger.info('Remote repository is empty. Initializing a new skillstash hub...');
         await initFreshHub(hubPath, remoteUrl);
       } else if (probe.hasRegistry) {
         // ─── Case 2: Non-empty remote with registry.json → clone + import ───
-        logger.info('Remote repository contains a skill-sync hub. Cloning...');
+        logger.info('Remote repository contains a skillstash hub. Cloning...');
         await cloneAndImport(hubPath, remoteUrl);
       } else {
         // ─── Case 3: Non-empty remote without registry.json → reject ───
-        logger.error('Remote repository is not empty and does not appear to be a skill-sync hub.');
+        logger.error('Remote repository is not empty and does not appear to be a skillstash hub.');
         logger.error('  (No registry.json found in the repository)');
         logger.info('');
         logger.info('  Please either:');
-        logger.info(`    1. Create a new empty repository and run ${chalk.cyan('skill-sync init <new-url>')}`);
+        logger.info(`    1. Create a new empty repository and run ${chalk.cyan('skillstash init <new-url>')}`);
         logger.info(`    2. Or delete all content in the existing repository and retry.`);
         return;
       }
@@ -208,14 +208,14 @@ async function initFreshHub(hubPath: string, remoteUrl: string): Promise<void> {
   }
 
   // Commit and push
-  gitCommit(hubPath, 'init: create skill-sync hub');
+  gitCommit(hubPath, 'init: create skillstash hub');
   gitAddRemote(hubPath, remoteUrl);
   logger.step('Pushing to remote...');
 
   if (gitPushSetUpstream(hubPath)) {
     logger.success('Pushed to remote');
   } else {
-    logger.warn('Push failed — you can push manually later with: skill-sync sync');
+    logger.warn('Push failed — you can push manually later with: skillstash sync');
   }
 
   // Show summary
@@ -326,7 +326,7 @@ function showInitSummary(hubPath: string, registry: ReturnType<typeof loadRegist
   logger.info(`  Skills: ${skillCount}`);
   logger.info('');
   logger.info('Next steps:');
-  logger.info(`  ${chalk.cyan('skill-sync install <name>')}  — Install a new skill`);
-  logger.info(`  ${chalk.cyan('skill-sync link')}           — Copy skills to agent directories`);
-  logger.info(`  ${chalk.cyan('skill-sync sync')}           — Full sync (pull + link + push)`);
+  logger.info(`  ${chalk.cyan('skillstash install <name>')}  — Install a new skill`);
+  logger.info(`  ${chalk.cyan('skillstash link')}           — Copy skills to agent directories`);
+  logger.info(`  ${chalk.cyan('skillstash sync')}           — Full sync (pull + link + push)`);
 }

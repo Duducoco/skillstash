@@ -1,10 +1,10 @@
 {
-  "name": "skill-sync",
-  "version": "0.5.0",
-  "description": "Personal skill management system with multi-device & multi-agent sync",
+  "name": "skillstash",
+  "version": "0.5.1",
+  "description": "Git-based skill stash - manage, sync & share agent skills across devices",
   "type": "module",
   "bin": {
-    "skill-sync": "./dist/index.js"
+    "skillstash": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -12,7 +12,7 @@
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["skill", "sync", "agent", "workbuddy", "codex", "claude", "cli"],
+  "keywords": ["skillstash", "skill", "stash", "sync", "agent", "workbuddy", "codex", "claude", "cli"],
   "author": "",
   "license": "MIT",
   "dependencies": {

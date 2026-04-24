@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="docs/images/banner.svg" alt="skill-sync Banner" width="800"/>
+  <img src="docs/images/banner.svg" alt="skillstash Banner" width="800"/>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/skill-sync">
-    <img src="https://img.shields.io/npm/dm/skill-sync?logo=npm" alt="npm downloads"/>
+  <a href="https://www.npmjs.com/package/skillstash">
+    <img src="https://img.shields.io/npm/dm/skillstash?logo=npm" alt="npm downloads"/>
   </a>
-  <a href="https://github.com/1mGee/skill-sync/blob/main/LICENSE">
+  <a href="https://github.com/1mGee/skillstash/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"/>
   </a>
 </p>
@@ -28,7 +28,7 @@
 ## Architecture
 
 ```
-~/.skill-sync/skills-hub/ (git) ← Single source of truth
+~/.skillstash/skills-hub/ (git) ← Single source of truth
  ┌──────────────────────────┐
  │     registry.json        │  ← Tracks versions, hashes, agents
  └──────────────────────────┘
@@ -38,7 +38,7 @@
  │       anti-distill/      │
  │       my-custom-skill/   │
  └──────────────────────────┘
-          │  skill-sync link (copy)
+          │  skillstash link (copy)
     ┌─────┼──────┬──────────┐
     ▼     ▼      ▼          ▼
    WB    Codex  Claude    Agents
@@ -55,55 +55,55 @@
 
 ```bash
 # Install globally
-npm install -g skill-sync
+npm install -g skillstash
 
 # Or use directly with npx
-npx skill-sync --help
+npx skillstash --help
 
 # 1. Initialize the hub with a remote repository
-skill-sync init git@github.com:yourname/my-skills.git
+skillstash init git@github.com:yourname/my-skills.git
 
 # 2. Install skills (from ClawHub, local path, or GitHub)
-skill-sync install clawhub:finance-ops
-skill-sync install owner/repo@skill-name   # GitHub
-skill-sync install ./my-local-skill         # Local path
+skillstash install clawhub:finance-ops
+skillstash install owner/repo@skill-name   # GitHub
+skillstash install ./my-local-skill         # Local path
 
 # 3. Import existing skills from agent directories
-skill-sync import --force   # --force to overwrite existing
+skillstash import --force   # --force to overwrite existing
 
 # 4. Link (copy) to all agent directories
-skill-sync link
+skillstash link
 
 # 5. Full sync — pull + verify + link + push
-skill-sync sync
+skillstash sync
 ```
 
 ## Command Reference
 
-### `skill-sync init <remote-url>`
+### `skillstash init <remote-url>`
 
-Initialize the skills-hub with a remote Git repository. The hub is always at `~/.skill-sync/skills-hub`.
+Initialize the skills-hub with a remote Git repository. The hub is always at `~/.skillstash/skills-hub`.
 
 | Remote Status | Behavior |
 |---|---|
 | **Empty repo** | Create hub locally → auto-import existing agent skills → git push |
 | **Non-empty with `registry.json`** | Clone hub → re-detect local agents → import new local skills → git push |
-| **Non-empty without `registry.json`** | ❌ Reject — not a skill-sync repo. Prompt to create a new empty repo |
+| **Non-empty without `registry.json`** | ❌ Reject — not a skillstash repo. Prompt to create a new empty repo |
 
 ```bash
-skill-sync init git@github.com:yourname/my-skills.git
-skill-sync init https://github.com/yourname/my-skills.git
+skillstash init git@github.com:yourname/my-skills.git
+skillstash init https://github.com/yourname/my-skills.git
 ```
 
-### `skill-sync install <source>`
+### `skillstash install <source>`
 
 Install a skill from ClawHub, a local path, or a GitHub repository.
 
 ```bash
-skill-sync install clawhub:finance-ops         # From ClawHub (requires clawhub CLI)
-skill-sync install ./my-local-skill            # From local path
-skill-sync install owner/repo@skill-name       # From GitHub
-skill-sync install clawhub:finance-ops --no-lint # Skip SKILL.md validation
+skillstash install clawhub:finance-ops         # From ClawHub (requires clawhub CLI)
+skillstash install ./my-local-skill            # From local path
+skillstash install owner/repo@skill-name       # From GitHub
+skillstash install clawhub:finance-ops --no-lint # Skip SKILL.md validation
 ```
 
 **ClawHub integration** requires the `clawhub` CLI installed and logged in:
@@ -119,66 +119,66 @@ clawhub login
 
 Multi-skill repositories without `@skill-name` will prompt for selection.
 
-### `skill-sync import`
+### `skillstash import`
 
 Scan agent directories (resolving symlinks/Junctions), and import skills into the hub.
 
 ```bash
-skill-sync import                  # Import from all agents
-skill-sync import --agent claude   # Only from specific agent
-skill-sync import --force         # Re-import existing skills (overwrite)
-skill-sync import --dry-run       # Preview without making changes
-skill-sync import --no-lint       # Skip SKILL.md validation
+skillstash import                  # Import from all agents
+skillstash import --agent claude   # Only from specific agent
+skillstash import --force         # Re-import existing skills (overwrite)
+skillstash import --dry-run       # Preview without making changes
+skillstash import --no-lint       # Skip SKILL.md validation
 ```
 
-### `skill-sync link`
+### `skillstash link`
 
 Copy skills from hub to all agent directories.
 
 ```bash
-skill-sync link                    # Link all skills to all agents
-skill-sync link --agent workbuddy  # Only to specific agent
-skill-sync link --skill finance-ops # Only specific skill
-skill-sync link --clean            # Remove unmanaged skills from agent dirs
+skillstash link                    # Link all skills to all agents
+skillstash link --agent workbuddy  # Only to specific agent
+skillstash link --skill finance-ops # Only specific skill
+skillstash link --clean            # Remove unmanaged skills from agent dirs
 ```
 
-### `skill-sync list`
+### `skillstash list`
 
 List installed skills and their status across agents.
 
 ```bash
-skill-sync list                    # Summary view
-skill-sync list -v                 # Verbose with descriptions
+skillstash list                    # Summary view
+skillstash list -v                 # Verbose with descriptions
 ```
 
-### `skill-sync sync`
+### `skillstash sync`
 
 Full sync: git pull → verify integrity → link to agents → git push.
 
 ```bash
-skill-sync sync                    # Full sync
-skill-sync sync --no-pull          # Skip git pull
-skill-sync sync --no-push          # Skip git push
-skill-sync sync --no-link          # Skip linking
-skill-sync sync --clean            # Remove unmanaged skills
+skillstash sync                    # Full sync
+skillstash sync --no-pull          # Skip git pull
+skillstash sync --no-push          # Skip git push
+skillstash sync --no-link          # Skip linking
+skillstash sync --clean            # Remove unmanaged skills
 ```
 
-### `skill-sync diff`
+### `skillstash diff`
 
 Show differences between hub and agent directories.
 
 ```bash
-skill-sync diff                    # Compare all agents
-skill-sync diff --agent workbuddy  # Only specific agent
+skillstash diff                    # Compare all agents
+skillstash diff --agent workbuddy  # Only specific agent
 ```
 
-### `skill-sync remove <skill-name>`
+### `skillstash remove <skill-name>`
 
 Remove a skill from hub and all agent directories.
 
 ```bash
-skill-sync remove old-skill        # Remove everywhere
-skill-sync remove old-skill --keep-agents  # Only remove from hub
+skillstash remove old-skill        # Remove everywhere
+skillstash remove old-skill --keep-agents  # Only remove from hub
 ```
 
 ## Multi-Device Sync
@@ -187,22 +187,22 @@ Since `init` requires a remote URL, multi-device sync is built in from the start
 
 ```bash
 # On device A (first time)
-skill-sync init git@github.com:yourname/my-skills.git
+skillstash init git@github.com:yourname/my-skills.git
 # → Creates hub, imports local skills, pushes to remote
 
 # On device B (first time)
-skill-sync init git@github.com:yourname/my-skills.git
+skillstash init git@github.com:yourname/my-skills.git
 # → Clones hub, imports any local-only skills, pushes merged result
 
 # Daily workflow on any device
-skill-sync sync    # pull + verify + link + push
+skillstash sync    # pull + verify + link + push
 ```
 
 ### What happens on `init`
 
 ```
 ┌──────────────────────────────────────────────────┐
-│            skill-sync init <remote-url>           │
+│            skillstash init <remote-url>           │
 └──────────────────────┬───────────────────────────┘
                        │
                 Probe remote repo
@@ -213,7 +213,7 @@ skill-sync sync    # pull + verify + link + push
           │            │                │
           ▼            ▼                ▼
    Create hub     Clone hub          ❌ Reject:
-   Import local   Detect agents     "Not a skill-sync repo"
+   Import local   Detect agents     "Not a skillstash repo"
    skills         Import new        Suggest creating
    Push to remote local skills      a new empty repo
                   Push merged
@@ -262,18 +262,18 @@ The `registry.json` in the hub tracks everything:
 ## Project Structure
 
 ```
-skill-sync/
+skillstash/
 ├── src/
 │   ├── index.ts              # CLI entry point
 │   ├── commands/
-│   │   ├── init.ts           # skill-sync init <remote-url>
-│   │   ├── install.ts        # skill-sync install
-│   │   ├── link.ts           # skill-sync link
-│   │   ├── list.ts           # skill-sync list
-│   │   ├── sync.ts           # skill-sync sync
-│   │   ├── diff.ts           # skill-sync diff
-│   │   ├── remove.ts         # skill-sync remove
-│   │   └── import.ts         # skill-sync import
+│   │   ├── init.ts           # skillstash init <remote-url>
+│   │   ├── install.ts        # skillstash install
+│   │   ├── link.ts           # skillstash link
+│   │   ├── list.ts           # skillstash list
+│   │   ├── sync.ts           # skillstash sync
+│   │   ├── diff.ts           # skillstash diff
+│   │   ├── remove.ts         # skillstash remove
+│   │   └── import.ts         # skillstash import
 │   ├── core/
 │   │   ├── registry.ts       # Registry types & operations
 │   │   ├── hub.ts            # Hub directory management

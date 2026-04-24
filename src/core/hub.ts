@@ -8,7 +8,7 @@ import {
 } from './registry.js';
 import { ensureDir, readJson, writeJson, exists } from '../utils/fs.js';
 
-const SKILL_SYNC_DIR = '.skill-sync';
+const SKILL_SYNC_DIR = '.skillstash';
 const HUB_DIR_NAME = 'skills-hub';
 const REGISTRY_FILE = 'registry.json';
 

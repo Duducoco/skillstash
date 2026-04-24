@@ -40,7 +40,7 @@
   </g>
   <circle cx="120" cy="100" r="60" fill="#6366f1" opacity="0.04" filter="url(#softGlow)"/>
   <circle cx="680" cy="100" r="60" fill="#a78bfa" opacity="0.04" filter="url(#softGlow)"/>
-  <g transform="translate(195, 62)" filter="url(#glow)">
+  <g transform="translate(190, 62)" filter="url(#glow)">
     <path d="M 0,18 A 18,18 0 0 1 18,0" stroke="url(#iconGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
     <polygon points="18,-4 18,4 22,0" fill="#a78bfa"/>
     <path d="M 36,18 A 18,18 0 0 1 18,36" stroke="url(#iconGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
@@ -49,7 +49,7 @@
     <circle cx="4" cy="30" r="2.5" fill="#a78bfa" opacity="0.6"/>
     <circle cx="32" cy="6" r="2.5" fill="#6366f1" opacity="0.6"/>
   </g>
-  <text x="415" y="102" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="64" fill="url(#textGrad)" text-anchor="middle" font-weight="bold" filter="url(#glow)" letter-spacing="-1">skill-sync</text>
+  <text x="415" y="102" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="64" fill="url(#textGrad)" text-anchor="middle" font-weight="bold" filter="url(#glow)" letter-spacing="-1">skillstash</text>
   <text x="415" y="134" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" fill="#94a3b8" text-anchor="middle" letter-spacing="0.5">One hub, all agents — manage &amp; sync AI skills across every tool</text>
   <g transform="translate(295, 148)">
     <rect x="0" y="0" width="90" height="22" rx="11" fill="#1e293b" stroke="#334155" stroke-width="1"/>

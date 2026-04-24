@@ -17,7 +17,7 @@ export function registerListCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skill-sync init` first.');
+        logger.error('Skills hub not initialized. Run `skillstash init` first.');
         return;
       }
 
@@ -26,7 +26,7 @@ export function registerListCommand(program: Command): void {
       const skillNames = Object.keys(registry.skills);
 
       if (skillNames.length === 0) {
-        logger.info('No skills installed yet. Use `skill-sync install <name>` to add one.');
+        logger.info('No skills installed yet. Use `skillstash install <name>` to add one.');
         return;
       }
 

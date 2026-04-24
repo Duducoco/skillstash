@@ -17,7 +17,7 @@ export function registerRemoveCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skill-sync init` first.');
+        logger.error('Skills hub not initialized. Run `skillstash init` first.');
         return;
       }
 

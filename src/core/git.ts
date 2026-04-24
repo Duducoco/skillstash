@@ -74,7 +74,7 @@ export function gitProbeRemote(remoteUrl: string): { empty: boolean; hasRegistry
  * Used to verify registry.json presence before full clone.
  */
 function gitRemoteHasFile(remoteUrl: string, filePath: string): boolean {
-  const tmpDir = path.join(os.tmpdir(), `skill-sync-probe-${Date.now()}`);
+  const tmpDir = path.join(os.tmpdir(), `skillstash-probe-${Date.now()}`);
 
   try {
     // Shallow clone with depth 1
@@ -168,12 +168,12 @@ function ensureGitUser(hubPath: string): void {
   try {
     execSync('git config user.name', { cwd: hubPath, stdio: 'pipe' });
   } catch {
-    execSync('git config user.name "skill-sync"', { cwd: hubPath, stdio: 'pipe' });
+    execSync('git config user.name "skillstash"', { cwd: hubPath, stdio: 'pipe' });
   }
   try {
     execSync('git config user.email', { cwd: hubPath, stdio: 'pipe' });
   } catch {
-    execSync('git config user.email "skill-sync@local"', { cwd: hubPath, stdio: 'pipe' });
+    execSync('git config user.email "skillstash@local"', { cwd: hubPath, stdio: 'pipe' });
   }
 }
 
@@ -273,7 +273,7 @@ export function currentBranch(hubPath: string): string | null {
 export function gitShallowClone(remoteUrl: string): string | null {
   if (!gitAvailable()) return null;
 
-  const tmpDir = path.join(os.tmpdir(), `skill-sync-gh-${Date.now()}`);
+  const tmpDir = path.join(os.tmpdir(), `skillstash-gh-${Date.now()}`);
   try {
     execSync(`git clone --depth 1 "${remoteUrl}" "${tmpDir}"`, {
       stdio: 'pipe',

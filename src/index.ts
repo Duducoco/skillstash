@@ -16,7 +16,7 @@ import { registerImportCommand } from './commands/import.js';
 const program = new Command();
 
 program
-  .name('skill-sync')
+  .name('skillstash')
   .description('Personal skill management system with multi-device & multi-agent sync')
   .version('0.5.0')
   .helpOption('-h, --help', 'Show help');
@@ -35,27 +35,27 @@ registerImportCommand(program);
 // Custom help display
 program.addHelpText('after', `
 ${chalk.bold('Quick Start:')}
-  $ skill-sync init <remote-url>            Initialize hub with a Git remote
-  $ skill-sync install clawhub:<slug>       Install a skill from ClawHub
-  $ skill-sync import                       Import existing skills from agent directories
-  $ skill-sync link                         Copy skills to all agent directories
-  $ skill-sync sync                         Full sync: pull + verify + link + push
+  $ skillstash init <remote-url>            Initialize hub with a Git remote
+  $ skillstash install clawhub:<slug>       Install a skill from ClawHub
+  $ skillstash import                       Import existing skills from agent directories
+  $ skillstash link                         Copy skills to all agent directories
+  $ skillstash sync                         Full sync: pull + verify + link + push
 
 ${chalk.bold('Install Sources:')}
-  ClawHub       skill-sync install clawhub:finance-ops
-  Local path    skill-sync install ./my-skill
-  GitHub        skill-sync install owner/repo@skill-name
+  ClawHub       skillstash install clawhub:finance-ops
+  Local path    skillstash install ./my-skill
+  GitHub        skillstash install owner/repo@skill-name
 
 ${chalk.bold('Examples:')}
-  $ skill-sync init git@github.com:user/my-skills.git
-  $ skill-sync install clawhub:finance-ops
-  $ skill-sync install owner/repo@skill-name
-  $ skill-sync import
-  $ skill-sync list -v
-  $ skill-sync link --agent workbuddy
-  $ skill-sync diff
-  $ skill-sync sync
-  $ skill-sync remove old-skill
+  $ skillstash init git@github.com:user/my-skills.git
+  $ skillstash install clawhub:finance-ops
+  $ skillstash install owner/repo@skill-name
+  $ skillstash import
+  $ skillstash list -v
+  $ skillstash link --agent workbuddy
+  $ skillstash diff
+  $ skillstash sync
+  $ skillstash remove old-skill
 `);
 
 program.parse();

@@ -28,7 +28,7 @@ function clawhubAvailable(): boolean {
  * Uses: clawhub install <slug> --workdir <tmp> --dir skills
  */
 function installFromClawhub(slug: string): string | null {
-  const tmpDir = path.join(os.tmpdir(), `skill-sync-clawhub-${Date.now()}`);
+  const tmpDir = path.join(os.tmpdir(), `skillstash-clawhub-${Date.now()}`);
 
   try {
     logger.step(`  Downloading from ClawHub: ${chalk.bold(slug)}`);
@@ -69,7 +69,7 @@ function resolveSkillSource(name: string): { type: 'clawhub' | 'local' | 'github
   if (name.startsWith('clawhub:')) {
     const slug = name.slice('clawhub:'.length);
     if (!slug) {
-      logger.error('ClawHub slug is empty. Usage: skill-sync install clawhub:<slug>');
+      logger.error('ClawHub slug is empty. Usage: skillstash install clawhub:<slug>');
       return null;
     }
     return { type: 'clawhub', path: '', slug };
@@ -96,9 +96,9 @@ function resolveSkillSource(name: string): { type: 'clawhub' | 'local' | 'github
 
   logger.error(`Skill "${name}" not found. Provide a ClawHub slug, local path, or GitHub repo.`);
   logger.info('  Examples:');
-  logger.info('    skill-sync install clawhub:finance-ops');
-  logger.info('    skill-sync install ./my-skill');
-  logger.info('    skill-sync install user/repo@skill-name');
+  logger.info('    skillstash install clawhub:finance-ops');
+  logger.info('    skillstash install ./my-skill');
+  logger.info('    skillstash install user/repo@skill-name');
   return null;
 }
 
@@ -148,7 +148,7 @@ function findGithubSkill(repoDir: string, skillName?: string): string | null {
       for (const e of entries) {
         logger.info(`  ${e.name}`);
       }
-      logger.info(`\n  Usage: skill-sync install owner/repo@${entries[0].name}`);
+      logger.info(`\n  Usage: skillstash install owner/repo@${entries[0].name}`);
       return null;
     }
   }
@@ -166,7 +166,7 @@ function findGithubSkill(repoDir: string, skillName?: string): string | null {
     for (const d of topDirs) {
       logger.info(`  ${d.name}`);
     }
-    logger.info(`\n  Usage: skill-sync install owner/repo@${topDirs[0].name}`);
+    logger.info(`\n  Usage: skillstash install owner/repo@${topDirs[0].name}`);
     return null;
   }
 
@@ -184,7 +184,7 @@ export function registerInstallCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skill-sync init <remote-url>` first.');
+        logger.error('Skills hub not initialized. Run `skillstash init <remote-url>` first.');
         return;
       }
 

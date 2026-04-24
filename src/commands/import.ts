@@ -84,7 +84,7 @@ export function registerImportCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skill-sync init` first.');
+        logger.error('Skills hub not initialized. Run `skillstash init` first.');
         return;
       }
 
@@ -225,7 +225,7 @@ export function registerImportCommand(program: Command): void {
         if (updated > 0) parts.push(`updated ${updated}`);
         gitCommit(hubPath, `import: ${parts.join(', ')} skill(s) from agent directories`);
         logger.success(`\n${parts.join(', ')} skill(s)`);
-        logger.info(`Run ${chalk.cyan('skill-sync link')} to distribute to all agents`);
+        logger.info(`Run ${chalk.cyan('skillstash link')} to distribute to all agents`);
       } else {
         logger.info('\nNo new skills to import');
       }

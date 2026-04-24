@@ -15,7 +15,7 @@ export function registerDiffCommand(program: Command): void {
       const hubPath = getDefaultHubPath();
 
       if (!hubExists(hubPath)) {
-        logger.error('Skills hub not initialized. Run `skill-sync init` first.');
+        logger.error('Skills hub not initialized. Run `skillstash init` first.');
         return;
       }
 
@@ -82,7 +82,7 @@ export function registerDiffCommand(program: Command): void {
       if (!hasDiff) {
         logger.info(`\n${chalk.green('All skills are in sync!')}`);
       } else {
-        logger.info(`\nRun ${chalk.cyan('skill-sync sync')} to resolve differences`);
+        logger.info(`\nRun ${chalk.cyan('skillstash sync')} to resolve differences`);
       }
     });
 }

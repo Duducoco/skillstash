@@ -1,5 +1,5 @@
 /**
- * Registry types and operations for skill-sync
+ * Registry types and operations for skillstash
  */
 
 export interface SkillMeta {
