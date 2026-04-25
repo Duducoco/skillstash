@@ -237,7 +237,7 @@ export const en: Messages = {
     listNormal: 'Normal',
     listVerbose: 'Verbose (show descriptions)',
     removeNamePrompt: 'Skill name to remove:',
-    agentsSubcmdPrompt: 'Select agents action:',
+    agentsSubcmdPrompt: 'Select an agent action:',
     agentsListDesc: 'Show all agents and their managed status',
     agentsSelectDesc: 'Interactively choose which agents to manage',
     agentsEnableDesc: 'Enable a specific agent',
