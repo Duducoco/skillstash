@@ -66,6 +66,10 @@ npm install -g skillstash
 # Or use directly with npx
 npx skillstash --help
 
+# Launch the interactive TUI (default — runs when no subcommand is given)
+skillstash
+# → Arrow keys to navigate, Enter to select, prompts collect any required arguments
+
 # 1a. Initialize a local-only hub (no Git remote required)
 skillstash init
 # → Interactive: select language, choose which agents to manage
@@ -410,7 +414,8 @@ skillstash/
 │   │   ├── diff.ts           # skillstash diff
 │   │   ├── remove.ts         # skillstash remove
 │   │   ├── import.ts         # skillstash import
-│   │   └── language.ts       # skillstash language
+│   │   ├── language.ts       # skillstash language
+│   │   └── tui.ts            # Default TUI (launched when no subcommand given)
 │   ├── core/
 │   │   ├── agents.ts         # Built-in agent definitions & plugin API
 │   │   ├── registry.ts       # Registry types & operations

@@ -17,6 +17,7 @@ import { registerAgentsCommand } from './commands/agents.js';
 import { registerAssignCommand } from './commands/assign.js';
 import { registerLanguageCommand } from './commands/language.js';
 import { registerAddRemoteCommand } from './commands/add-remote.js';
+import { launchTUI } from './commands/tui.js';
 
 import './i18n/en.js';
 import './i18n/zh.js';
@@ -36,7 +37,7 @@ const program = new Command();
 program
   .name('skillstash')
   .description('Personal skill management system with multi-device & multi-agent sync')
-  .version('0.8.1')
+  .version('0.9.0')
   .helpOption('-h, --help', 'Show help');
 
 // Register all commands
@@ -95,4 +96,18 @@ ${chalk.bold('Examples:')}
   $ skillstash remove old-skill
 `);
 
-program.parse();
+// When invoked with no arguments and in an interactive terminal, launch TUI.
+// Explicit subcommands, flags, and `--help` / `--version` bypass TUI.
+const rawArgs = process.argv.slice(2);
+const hasFlagOrCmd = rawArgs.length > 0;
+
+if (!hasFlagOrCmd) {
+  const selectedArgs = await launchTUI();
+  if (selectedArgs !== null) {
+    await program.parseAsync(selectedArgs, { from: 'user' });
+  } else {
+    program.help();
+  }
+} else {
+  await program.parseAsync(process.argv);
+}

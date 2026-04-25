@@ -213,6 +213,35 @@ export interface Messages {
     selectSkillsForAgent: string;
     selectLanguage: string;
   };
+  tui: {
+    selectCommand: string;
+    initDesc: string;
+    installDesc: string;
+    listDesc: string;
+    syncDesc: string;
+    linkDesc: string;
+    diffDesc: string;
+    importDesc: string;
+    removeDesc: string;
+    agentsDesc: string;
+    assignDesc: string;
+    languageDesc: string;
+    addRemoteDesc: string;
+    exit: string;
+    initUrlPrompt: string;
+    installNamePrompt: string;
+    listVerbosePrompt: string;
+    listNormal: string;
+    listVerbose: string;
+    removeNamePrompt: string;
+    agentsSubcmdPrompt: string;
+    agentsListDesc: string;
+    agentsSelectDesc: string;
+    agentsEnableDesc: string;
+    agentsDisableDesc: string;
+    agentNamePrompt: string;
+    addRemoteUrlPrompt: string;
+  };
   merge: {
     localNewer: string;
     sameTimestampKeepLocal: string;

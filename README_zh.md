@@ -63,6 +63,10 @@ skillstash 是一个 CLI 工具，将你的所有 AI Agent skill 集中存放在
 # 全局安装
 npm install -g skillstash
 
+# 启动交互式 TUI（默认行为 — 不带子命令直接运行时进入）
+skillstash
+# → 方向键导航，回车选择，根据提示输入所需参数
+
 # 1a. 初始化本地 Hub（无需 Git 远端）
 skillstash init
 # → 交互式提示：选择语言，选择要管理的 Agent
@@ -407,7 +411,8 @@ skillstash/
 │   │   ├── diff.ts           # skillstash diff
 │   │   ├── remove.ts         # skillstash remove
 │   │   ├── import.ts         # skillstash import
-│   │   └── language.ts       # skillstash language
+│   │   ├── language.ts       # skillstash language
+│   │   └── tui.ts            # 默认 TUI（不带子命令时启动）
 │   ├── core/
 │   │   ├── agents.ts         # 内置 Agent 定义与插件 API
 │   │   ├── registry.ts       # Registry 类型与操作
