@@ -239,8 +239,20 @@ export interface Messages {
     agentsSelectDesc: string;
     agentsEnableDesc: string;
     agentsDisableDesc: string;
+    agentsListLabel: string;
+    agentsSelectLabel: string;
+    agentsEnableLabel: string;
+    agentsDisableLabel: string;
+    agentsAddLabel: string;
+    agentsAddDesc: string;
+    agentsRemoveLabel: string;
+    agentsRemoveDesc: string;
     agentNamePrompt: string;
     addRemoteUrlPrompt: string;
+    homeDesc: string;
+    neverSynced: string;
+    fieldRequired: string;
+    inputHint: string;
   };
   merge: {
     localNewer: string;

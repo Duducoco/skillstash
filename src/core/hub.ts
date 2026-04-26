@@ -9,7 +9,7 @@ import {
   AgentConfig,
 } from './registry.js';
 import { ensureDir, readJson, writeJson, exists } from '../utils/fs.js';
-import { AgentDefinition, registerAgent, getAgentDefinitions, resolveSkillsPath } from './agents.js';
+import { AgentDefinition, registerAgent, getAgentDefinitions, resolveSkillsPath, isBuiltinAgent } from './agents.js';
 import { withLock } from '../utils/lock.js';
 
 const SKILL_SYNC_DIR = '.skillstash';
@@ -68,6 +68,13 @@ export function loadLocalState(hubPath?: string): LocalState {
   // Register any persisted custom agents
   for (const def of state.customAgents || []) {
     registerAgent(def);
+  }
+  // Purge stale agents: remove entries that are no longer builtin and not a custom agent
+  const customNames = new Set((state.customAgents || []).map((a) => a.name));
+  for (const name of Object.keys(state.agents || {})) {
+    if (!isBuiltinAgent(name) && !customNames.has(name)) {
+      delete state.agents[name];
+    }
   }
   return {
     lastSync: state.lastSync ?? null,
