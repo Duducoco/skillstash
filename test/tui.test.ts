@@ -1,41 +1,29 @@
 /**
- * Tests for the TUI default-launch behavior.
+ * Tests for the TUI logic.
  *
- * We cannot exercise real @inquirer/prompts interactivity in a non-TTY CI
- * environment, so we mock the module and verify that launchTUI() builds the
- * correct argument arrays for each menu selection.
+ * The Ink-based TUI renders a full-screen React component and cannot be
+ * exercised directly in a non-TTY CI environment.  Instead we test the
+ * exported pure `buildArgs` function (which maps a menu choice + collected
+ * inputs to a Commander args array) and the non-TTY guard in `launchTUI`.
  */
 
-import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 
-// ── Mock @inquirer/prompts ────────────────────────────────────────────────────
-const mockSelect = vi.fn();
-const mockInput  = vi.fn();
-
-vi.mock('@inquirer/prompts', () => ({
-  select:    (...args: unknown[]) => mockSelect(...args),
-  input:     (...args: unknown[]) => mockInput(...args),
-  Separator: class Separator { separator = true; },
-}));
-
-// ── Import AFTER mocking ──────────────────────────────────────────────────────
-// Simulate a TTY environment so launchTUI() does not return null early.
+// ── Simulate a TTY environment ─────────────────────────────────────────────────
 const originalStdin  = Object.getOwnPropertyDescriptor(process.stdin,  'isTTY');
 const originalStdout = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');
 
 beforeEach(() => {
   Object.defineProperty(process.stdin,  'isTTY', { value: true, configurable: true });
   Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
-  mockSelect.mockReset();
-  mockInput.mockReset();
 });
 
 // ── Load i18n so t() returns real strings, not keys ───────────────────────────
 await import('../src/i18n/en.js');
 
-import { launchTUI } from '../src/commands/tui.js';
+import { launchTUI, buildArgs } from '../src/commands/tui.js';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── launchTUI: non-TTY guard ───────────────────────────────────────────────────
 
 describe('launchTUI — non-TTY', () => {
   it('returns null when stdin is not a TTY', async () => {
@@ -51,112 +39,137 @@ describe('launchTUI — non-TTY', () => {
   });
 });
 
-describe('launchTUI — exit choice', () => {
-  it('returns null when the user selects Exit', async () => {
-    mockSelect.mockResolvedValueOnce('exit');
-    const result = await launchTUI();
-    expect(result).toBeNull();
+// ── buildArgs: exit ───────────────────────────────────────────────────────────
+
+describe('buildArgs — exit choice', () => {
+  it('returns null for exit', () => {
+    expect(buildArgs('exit', {})).toBeNull();
   });
 });
 
-describe('launchTUI — simple commands (no extra prompts)', () => {
+// ── buildArgs: simple commands (no extra inputs needed) ───────────────────────
+
+describe('buildArgs — simple commands', () => {
   for (const cmd of ['sync', 'link', 'diff', 'import', 'assign', 'language'] as const) {
-    it(`returns ["${cmd}"] for ${cmd} selection`, async () => {
-      mockSelect.mockResolvedValueOnce(cmd);
-      const result = await launchTUI();
-      expect(result).toEqual([cmd]);
+    it(`returns ["${cmd}"] for ${cmd}`, () => {
+      expect(buildArgs(cmd, {})).toEqual([cmd]);
     });
   }
 });
 
-describe('launchTUI — init', () => {
-  it('returns ["init"] when no URL is entered', async () => {
-    mockSelect.mockResolvedValueOnce('init');
-    mockInput.mockResolvedValueOnce('');
-    const result = await launchTUI();
-    expect(result).toEqual(['init']);
+// ── buildArgs: init ───────────────────────────────────────────────────────────
+
+describe('buildArgs — init', () => {
+  it('returns ["init"] when no URL is provided', () => {
+    expect(buildArgs('init', { initUrl: '' })).toEqual(['init']);
   });
 
-  it('returns ["init", url] when a URL is entered', async () => {
-    mockSelect.mockResolvedValueOnce('init');
-    mockInput.mockResolvedValueOnce('git@github.com:user/skills.git');
-    const result = await launchTUI();
-    expect(result).toEqual(['init', 'git@github.com:user/skills.git']);
+  it('returns ["init"] when initUrl is absent', () => {
+    expect(buildArgs('init', {})).toEqual(['init']);
   });
-});
 
-describe('launchTUI — install', () => {
-  it('returns ["install", skillName]', async () => {
-    mockSelect.mockResolvedValueOnce('install');
-    mockInput.mockResolvedValueOnce('clawhub:finance-ops');
-    const result = await launchTUI();
-    expect(result).toEqual(['install', 'clawhub:finance-ops']);
+  it('returns ["init", url] when a URL is provided', () => {
+    expect(buildArgs('init', { initUrl: 'git@github.com:user/skills.git' }))
+      .toEqual(['init', 'git@github.com:user/skills.git']);
+  });
+
+  it('trims whitespace from the URL', () => {
+    expect(buildArgs('init', { initUrl: '  git@github.com:user/skills.git  ' }))
+      .toEqual(['init', 'git@github.com:user/skills.git']);
   });
 });
 
-describe('launchTUI — list', () => {
-  it('returns ["list"] in normal mode', async () => {
-    mockSelect.mockResolvedValueOnce('list');
-    mockSelect.mockResolvedValueOnce(false);
-    const result = await launchTUI();
-    expect(result).toEqual(['list']);
+// ── buildArgs: install ────────────────────────────────────────────────────────
+
+describe('buildArgs — install', () => {
+  it('returns ["install", skillName]', () => {
+    expect(buildArgs('install', { installName: 'clawhub:finance-ops' }))
+      .toEqual(['install', 'clawhub:finance-ops']);
   });
 
-  it('returns ["list", "--verbose"] in verbose mode', async () => {
-    mockSelect.mockResolvedValueOnce('list');
-    mockSelect.mockResolvedValueOnce(true);
-    const result = await launchTUI();
-    expect(result).toEqual(['list', '--verbose']);
+  it('returns null when skillName is empty', () => {
+    expect(buildArgs('install', { installName: '' })).toBeNull();
   });
-});
 
-describe('launchTUI — remove', () => {
-  it('returns ["remove", skillName]', async () => {
-    mockSelect.mockResolvedValueOnce('remove');
-    mockInput.mockResolvedValueOnce('old-skill');
-    const result = await launchTUI();
-    expect(result).toEqual(['remove', 'old-skill']);
+  it('returns null when skillName is absent', () => {
+    expect(buildArgs('install', {})).toBeNull();
   });
 });
 
-describe('launchTUI — agents', () => {
-  it('returns ["agents", "list"] for agents list', async () => {
-    mockSelect.mockResolvedValueOnce('agents');
-    mockSelect.mockResolvedValueOnce('list');
-    const result = await launchTUI();
-    expect(result).toEqual(['agents', 'list']);
+// ── buildArgs: list ───────────────────────────────────────────────────────────
+
+describe('buildArgs — list', () => {
+  it('returns ["list"] in normal mode', () => {
+    expect(buildArgs('list', { listVerbose: false })).toEqual(['list']);
   });
 
-  it('returns ["agents", "select"] for agents select', async () => {
-    mockSelect.mockResolvedValueOnce('agents');
-    mockSelect.mockResolvedValueOnce('select');
-    const result = await launchTUI();
-    expect(result).toEqual(['agents', 'select']);
+  it('returns ["list"] when listVerbose is absent', () => {
+    expect(buildArgs('list', {})).toEqual(['list']);
   });
 
-  it('returns ["agents", "enable", agentName] for agents enable', async () => {
-    mockSelect.mockResolvedValueOnce('agents');
-    mockSelect.mockResolvedValueOnce('enable');
-    mockInput.mockResolvedValueOnce('claude');
-    const result = await launchTUI();
-    expect(result).toEqual(['agents', 'enable', 'claude']);
-  });
-
-  it('returns ["agents", "disable", agentName] for agents disable', async () => {
-    mockSelect.mockResolvedValueOnce('agents');
-    mockSelect.mockResolvedValueOnce('disable');
-    mockInput.mockResolvedValueOnce('cursor');
-    const result = await launchTUI();
-    expect(result).toEqual(['agents', 'disable', 'cursor']);
+  it('returns ["list", "--verbose"] in verbose mode', () => {
+    expect(buildArgs('list', { listVerbose: true })).toEqual(['list', '--verbose']);
   });
 });
 
-describe('launchTUI — add-remote', () => {
-  it('returns ["add-remote", url]', async () => {
-    mockSelect.mockResolvedValueOnce('add-remote');
-    mockInput.mockResolvedValueOnce('git@github.com:user/skills.git');
-    const result = await launchTUI();
-    expect(result).toEqual(['add-remote', 'git@github.com:user/skills.git']);
+// ── buildArgs: remove ─────────────────────────────────────────────────────────
+
+describe('buildArgs — remove', () => {
+  it('returns ["remove", skillName]', () => {
+    expect(buildArgs('remove', { removeName: 'old-skill' }))
+      .toEqual(['remove', 'old-skill']);
+  });
+
+  it('returns null when removeName is empty', () => {
+    expect(buildArgs('remove', { removeName: '' })).toBeNull();
+  });
+});
+
+// ── buildArgs: agents ─────────────────────────────────────────────────────────
+
+describe('buildArgs — agents', () => {
+  it('returns ["agents", "list"]', () => {
+    expect(buildArgs('agents', { agentsSub: 'list' })).toEqual(['agents', 'list']);
+  });
+
+  it('returns ["agents", "select"]', () => {
+    expect(buildArgs('agents', { agentsSub: 'select' })).toEqual(['agents', 'select']);
+  });
+
+  it('returns ["agents", "enable", agentName]', () => {
+    expect(buildArgs('agents', { agentsSub: 'enable', agentName: 'claude' }))
+      .toEqual(['agents', 'enable', 'claude']);
+  });
+
+  it('returns ["agents", "disable", agentName]', () => {
+    expect(buildArgs('agents', { agentsSub: 'disable', agentName: 'cursor' }))
+      .toEqual(['agents', 'disable', 'cursor']);
+  });
+
+  it('returns null when agentsSub is absent', () => {
+    expect(buildArgs('agents', {})).toBeNull();
+  });
+
+  it('returns null when enable/disable agentName is empty', () => {
+    expect(buildArgs('agents', { agentsSub: 'enable', agentName: '' })).toBeNull();
+  });
+});
+
+// ── buildArgs: add-remote ─────────────────────────────────────────────────────
+
+describe('buildArgs — add-remote', () => {
+  it('returns ["add-remote", url]', () => {
+    expect(buildArgs('add-remote', { addRemoteUrl: 'git@github.com:user/skills.git' }))
+      .toEqual(['add-remote', 'git@github.com:user/skills.git']);
+  });
+
+  it('returns null when url is empty', () => {
+    expect(buildArgs('add-remote', { addRemoteUrl: '' })).toBeNull();
+  });
+
+  it('trims whitespace from the URL', () => {
+    expect(buildArgs('add-remote', { addRemoteUrl: '  git@github.com:user/skills.git  ' }))
+      .toEqual(['add-remote', 'git@github.com:user/skills.git']);
   });
 });
 
@@ -165,3 +178,4 @@ afterAll(() => {
   if (originalStdin)  Object.defineProperty(process.stdin,  'isTTY', originalStdin);
   if (originalStdout) Object.defineProperty(process.stdout, 'isTTY', originalStdout);
 });
+
