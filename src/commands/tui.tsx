@@ -288,9 +288,17 @@ function MultiSelectList({
   cursorIdx: number;
   zh: boolean;
 }) {
+  const termRows = process.stdout.rows || 24;
+  const pageSize = Math.max(5, termRows - 10);
+  const half = Math.floor(pageSize / 2);
+  const start = Math.max(0, Math.min(cursorIdx - half, items.length - pageSize));
+  const end = Math.min(items.length, start + pageSize);
+  const visible = items.slice(start, end);
+
   return (
     <Box flexDirection="column" marginTop={1}>
-      {items.map((item, i) => {
+      {visible.map((item, vi) => {
+        const i = start + vi;
         const active = i === cursorIdx;
         const marker = item.checked ? '◉' : '◯';
         const dimmed = item.disabled;
@@ -315,6 +323,15 @@ function MultiSelectList({
           </Box>
         );
       })}
+      {items.length > pageSize && (
+        <Box marginTop={0}>
+          <Text color="gray" dimColor>
+            {start > 0 ? `↑ ${start} more  ` : '          '}
+            [{cursorIdx + 1} / {items.length}]
+            {end < items.length ? `  ↓ ${items.length - end} more` : ''}
+          </Text>
+        </Box>
+      )}
       <Box marginTop={1}>
         <Text color="gray" dimColor>
           {zh ? '空格切换  a全选  i反转  Enter确认  Esc返回'
@@ -340,9 +357,17 @@ function SelectList({
   items: SelectItem[];
   cursorIdx: number;
 }) {
+  const termRows = process.stdout.rows || 24;
+  const pageSize = Math.max(5, termRows - 10);
+  const half = Math.floor(pageSize / 2);
+  const start = Math.max(0, Math.min(cursorIdx - half, items.length - pageSize));
+  const end = Math.min(items.length, start + pageSize);
+  const visible = items.slice(start, end);
+
   return (
     <Box flexDirection="column" marginTop={1}>
-      {items.map((item, i) => {
+      {visible.map((item, vi) => {
+        const i = start + vi;
         const active = i === cursorIdx;
         return (
           <Box key={item.value} flexDirection="row">
@@ -356,6 +381,15 @@ function SelectList({
           </Box>
         );
       })}
+      {items.length > pageSize && (
+        <Box marginTop={0}>
+          <Text color="gray" dimColor>
+            {start > 0 ? `↑ ${start} more  ` : '          '}
+            [{cursorIdx + 1} / {items.length}]
+            {end < items.length ? `  ↓ ${items.length - end} more` : ''}
+          </Text>
+        </Box>
+      )}
       <Box marginTop={1}>
         <Text color="gray" dimColor>
           {getLocale() === 'zh' ? '↑↓ 选择  Enter 确认  Esc 返回'
