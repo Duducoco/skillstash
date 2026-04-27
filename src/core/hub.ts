@@ -69,13 +69,6 @@ export function loadLocalState(hubPath?: string): LocalState {
   for (const def of state.customAgents || []) {
     registerAgent(def);
   }
-  // Purge stale agents: remove entries that are no longer builtin and not a custom agent
-  const customNames = new Set((state.customAgents || []).map((a) => a.name));
-  for (const name of Object.keys(state.agents || {})) {
-    if (!isBuiltinAgent(name) && !customNames.has(name)) {
-      delete state.agents[name];
-    }
-  }
   return {
     lastSync: state.lastSync ?? null,
     agents: state.agents || {},
@@ -156,13 +149,20 @@ export function saveRegistry(registry: Registry, hubPath?: string): void {
   }
 
   const existingLocal = exists(getLocalPath(hp)) ? readJson<LocalState>(getLocalPath(hp)) : null;
+  const existingCustomNames = new Set((existingLocal?.customAgents ?? []).map((a) => a.name));
+  const mergedCustomAgents = [
+    ...(existingLocal?.customAgents ?? []),
+    ...Object.values(registry.agents)
+      .filter((a) => !isBuiltinAgent(a.name) && !existingCustomNames.has(a.name))
+      .map(({ name, skillsPath, linkType }) => ({ name, skillsPath, linkType })),
+  ];
   const newLocal: LocalState = {
     lastSync: registry.lastSync,
     agents: registry.agents,
     skillAgents,
     agentSkills: registry.agentSkills || {},
     language: existingLocal?.language ?? 'en',
-    customAgents: existingLocal?.customAgents ?? [],
+    customAgents: mergedCustomAgents,
   };
 
   withLock(hp, () => {
