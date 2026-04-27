@@ -12,6 +12,15 @@ import { ensureDir, readJson, writeJson, exists } from '../utils/fs.js';
 import { AgentDefinition, registerAgent, getAgentDefinitions, resolveSkillsPath, isBuiltinAgent } from './agents.js';
 import { withLock } from '../utils/lock.js';
 
+// ── Per-process in-memory cache ───────────────────────────────────────────────
+let _localStateCache: { hp: string; state: LocalState } | null = null;
+let _registryCache: { hp: string; registry: Registry } | null = null;
+
+export function invalidateHubCache(): void {
+  _localStateCache = null;
+  _registryCache = null;
+}
+
 const SKILL_SYNC_DIR = '.skillstash';
 const HUB_DIR_NAME = 'skills-hub';
 const REGISTRY_FILE = 'registry.json';
@@ -58,8 +67,14 @@ function ensureGitignore(hubPath: string): void {
 }
 
 export function loadLocalState(hubPath?: string): LocalState {
-  const lp = getLocalPath(hubPath);
-  if (!exists(lp)) return createEmptyLocalState();
+  const hp = hubPath || getDefaultHubPath();
+  if (_localStateCache && _localStateCache.hp === hp) return _localStateCache.state;
+  const lp = getLocalPath(hp);
+  if (!exists(lp)) {
+    const empty = createEmptyLocalState();
+    _localStateCache = { hp, state: empty };
+    return empty;
+  }
   const state = readJson<LocalState>(lp);
   for (const name of Object.keys(state.agents || {})) {
     if ((state.agents[name] as any).enabled === undefined) {
@@ -70,7 +85,7 @@ export function loadLocalState(hubPath?: string): LocalState {
   for (const def of state.customAgents || []) {
     registerAgent(def);
   }
-  return {
+  const result: LocalState = {
     lastSync: state.lastSync ?? null,
     agents: state.agents || {},
     skillAgents: state.skillAgents || {},
@@ -78,15 +93,19 @@ export function loadLocalState(hubPath?: string): LocalState {
     language: state.language ?? 'en',
     customAgents: state.customAgents || [],
   };
+  _localStateCache = { hp, state: result };
+  return result;
 }
 
 export function saveLocalState(state: LocalState, hubPath?: string): void {
   const hp = hubPath || getDefaultHubPath();
+  invalidateHubCache();
   withLock(hp, () => writeJson(getLocalPath(hp), state));
 }
 
 export function loadRegistry(hubPath?: string): Registry {
   const hp = hubPath || getDefaultHubPath();
+  if (_registryCache && _registryCache.hp === hp) return _registryCache.registry;
   const rp = getRegistryPath(hp);
   if (!exists(rp)) {
     return createEmptyRegistry();
@@ -122,6 +141,8 @@ export function loadRegistry(hubPath?: string): Registry {
         writeJson(getLocalPath(hp), migratedLocal);
       }
     });
+    // Bust potentially stale empty-state cache so loadLocalState re-reads the migrated file
+    _localStateCache = null;
   }
 
   const local = loadLocalState(hp);
@@ -131,16 +152,19 @@ export function loadRegistry(hubPath?: string): Registry {
     skills[name] = { ...meta, agents: local.skillAgents[name] ?? [] };
   }
 
-  return {
+  const result: Registry = {
     version: raw.version || '1.0',
     skills,
     lastSync: local.lastSync,
     agents: local.agents,
     agentSkills: local.agentSkills || {},
   };
+  _registryCache = { hp, registry: result };
+  return result;
 }
 
 export function saveRegistry(registry: Registry, hubPath?: string): void {
+  invalidateHubCache();
   const hp = hubPath || getDefaultHubPath();
   ensureGitignore(hp);
 
@@ -215,6 +239,20 @@ export function detectAgents(): AgentConfig[] {
       enabled: true,
     };
   });
+}
+
+/**
+ * Async variant: checks all 15 agent directories in parallel via fs.promises.access
+ * instead of 15 sequential fs.existsSync calls — dramatically faster on cold/network drives.
+ */
+export async function detectAgentsAsync(): Promise<AgentConfig[]> {
+  const defs = getAgentDefinitions();
+  return Promise.all(defs.map(async (def) => {
+    const skillsPath = resolveSkillsPath(def.skillsPath);
+    let available = false;
+    try { await fs.promises.access(path.dirname(skillsPath)); available = true; } catch {}
+    return { name: def.name, skillsPath, linkType: def.linkType, available, enabled: true };
+  }));
 }
 
 /**

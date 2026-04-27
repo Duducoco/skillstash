@@ -10,8 +10,10 @@ import {
   hubExists,
   getDefaultHubPath,
   detectAgents,
+  detectAgentsAsync,
   loadLocalState,
   saveLocalState,
+  invalidateHubCache,
 } from '../core/hub.js';
 import { AgentConfig, setAgentEnabled, addAgentToRegistry } from '../core/registry.js';
 
@@ -128,6 +130,26 @@ function loadHubInfo(): HubInfo {
   }
 }
 
+async function loadHubInfoAsync(): Promise<HubInfo> {
+  const hubPath = getDefaultHubPath();
+  if (!hubExists(hubPath)) {
+    return { initialized: false, hubPath, lastSync: null, skillCount: 0, skillNames: [], agents: await detectAgentsAsync() };
+  }
+  try {
+    const registry = loadRegistry(hubPath);
+    return {
+      initialized: true,
+      hubPath,
+      lastSync: registry.lastSync ?? null,
+      skillCount: Object.keys(registry.skills).length,
+      skillNames: Object.keys(registry.skills),
+      agents: Object.values(registry.agents) as AgentConfig[],
+    };
+  } catch {
+    return { initialized: false, hubPath, lastSync: null, skillCount: 0, skillNames: [], agents: await detectAgentsAsync() };
+  }
+}
+
 // ── Menu definitions ───────────────────────────────────────────────────────────
 
 const MENU_ITEMS: ReadonlyArray<{
@@ -186,7 +208,7 @@ const ASCII_LOGO = [
 
 // ── Home dashboard ──────────────────────────────────────────────────────────────
 
-function HomeContent({ hubInfo }: { hubInfo: HubInfo }) {
+function HomeContent({ hubInfo, loading }: { hubInfo: HubInfo; loading: boolean }) {
   const zh = getLocale() === 'zh';
   const hubPathShort = hubInfo.hubPath.replace(os.homedir(), '~');
   const syncStr = hubInfo.lastSync
@@ -216,13 +238,15 @@ function HomeContent({ hubInfo }: { hubInfo: HubInfo }) {
         <Box>
           <Box width={12}><Text color="gray">{zh ? '技能' : 'Skills'}</Text></Box>
           <Text color="gray">  :  </Text>
-          <Text color="white">{hubInfo.skillCount}</Text>
+          <Text color="white">{loading ? '...' : hubInfo.skillCount}</Text>
         </Box>
       </Box>
 
       <SectionHeader title={zh ? '已检测 Agent' : 'Detected Agents'} />
       <Box flexDirection="column" marginLeft={2} marginTop={1}>
-        {agentRows.map((row, ri) => (
+        {loading ? (
+          <Text color="gray" dimColor>{zh ? '正在检测...' : 'Detecting...'}</Text>
+        ) : agentRows.map((row, ri) => (
           <Box key={ri} flexDirection="row" marginBottom={0}>
             {row.map((a) => (
               <Box key={a.name} marginRight={4}>
@@ -503,9 +527,20 @@ function App({ onDone }: AppProps) {
     skillNames: [],
     agents: [],
   });
+  const [hubLoading, setHubLoading]     = useState(true);
 
-  // Load hub info after first paint so the TUI appears immediately
-  useEffect(() => { setHubInfo(loadHubInfo()); }, []);
+  // Load hub info asynchronously after first paint — TUI appears instantly,
+  // data fills in once detectAgentsAsync() parallel checks complete.
+  useEffect(() => {
+    let cancelled = false;
+    loadHubInfoAsync().then(info => {
+      if (!cancelled) {
+        setHubInfo(info);
+        setHubLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
   const [focus, setFocus]               = useState<Focus>('sidebar');
   const [menuIdx, setMenuIdx]           = useState(1);
   const [screen, setScreen]             = useState<Screen>('home');
@@ -537,7 +572,10 @@ function App({ onDone }: AppProps) {
   const childRef = useRef<child_process.ChildProcess | null>(null);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-  const refreshHub = useCallback(() => { setHubInfo(loadHubInfo()); }, []);
+  const refreshHub = useCallback(() => {
+    invalidateHubCache();
+    loadHubInfoAsync().then(setHubInfo);
+  }, []);
 
   const addOutput = useCallback((line: OutputLine) => {
     setOutputLines(prev => {
@@ -1106,7 +1144,7 @@ function App({ onDone }: AppProps) {
           </Box>
 
           {/* Home */}
-          {screen === 'home' && <HomeContent hubInfo={hubInfo} />}
+          {screen === 'home' && <HomeContent hubInfo={hubInfo} loading={hubLoading} />}
 
           {/* Text-input screens */}
           {['init-input', 'install-input', 'add-remote-input'].includes(screen) && (
