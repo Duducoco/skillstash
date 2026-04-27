@@ -26,6 +26,8 @@ function dw(s: string): number {
   let w = 0;
   for (const ch of [...s]) {
     const cp = ch.codePointAt(0) ?? 0;
+    // Variation selector (VS16) and ZWJ are zero-width
+    if (cp === 0xFE0F || cp === 0x200D) continue;
     if (
       (cp >= 0x1100 && cp <= 0x115F) ||
       (cp >= 0x2E80 && cp <= 0x303F) ||
@@ -201,18 +203,18 @@ function HomeContent({ hubInfo }: { hubInfo: HubInfo }) {
       <SectionHeader title={zh ? 'Hub 状态' : 'Hub Status'} />
       <Box flexDirection="column" marginLeft={2} marginTop={1}>
         <Box>
-          <Text color="gray">{padR(zh ? '路径' : 'Path', zh ? 4 : 6)}</Text>
+          <Box width={12}><Text color="gray">{zh ? '路径' : 'Path'}</Text></Box>
           <Text color="gray">  :  </Text>
           <Text color={hubInfo.initialized ? 'green' : 'yellow'}>{hubPathShort}</Text>
           {!hubInfo.initialized && <Text color="red">  ({zh ? '未初始化' : 'not initialized'})</Text>}
         </Box>
         <Box>
-          <Text color="gray">{padR(zh ? '上次同步' : 'Last sync', zh ? 4 : 9)}</Text>
+          <Box width={12}><Text color="gray">{zh ? '上次同步' : 'Last sync'}</Text></Box>
           <Text color="gray">  :  </Text>
           <Text color={hubInfo.lastSync ? 'white' : 'yellow'}>{syncStr}</Text>
         </Box>
         <Box>
-          <Text color="gray">{padR(zh ? '技能' : 'Skills', zh ? 4 : 6)}</Text>
+          <Box width={12}><Text color="gray">{zh ? '技能' : 'Skills'}</Text></Box>
           <Text color="gray">  :  </Text>
           <Text color="white">{hubInfo.skillCount}</Text>
         </Box>
@@ -225,9 +227,7 @@ function HomeContent({ hubInfo }: { hubInfo: HubInfo }) {
             {row.map((a) => (
               <Box key={a.name} marginRight={4}>
                 <Text color="blue" dimColor>{'>_ '}</Text>
-                <Text color={a.available ? 'white' : 'gray'} bold={a.available}>
-                  {padR(a.name, 12)}
-                </Text>
+                <Box width={14}><Text color={a.available ? 'white' : 'gray'} bold={a.available}>{a.name}</Text></Box>
                 <Text color={a.available ? (a.enabled ? 'green' : 'gray') : 'gray'}>
                   {a.available ? (a.enabled ? '✓' : '○') : '✗'}
                 </Text>
@@ -432,17 +432,35 @@ function ConfirmModal({
 
 // ── Output panel ────────────────────────────────────────────────────────────────
 
-function OutputPanel({ lines }: { lines: OutputLine[] }) {
+function OutputPanel({ lines, maxLines = 30, offset = 0, follow = false }: {
+  lines: OutputLine[];
+  maxLines?: number;
+  offset?: number;
+  follow?: boolean;
+}) {
   const colorMap = { success: 'green', warn: 'yellow', error: 'red', step: 'cyan', raw: 'white' };
-  const iconMap = { success: '✔', warn: '⚠', error: '✖', step: '→', raw: '' };
-  const displayLines = lines.slice(-30);
+  const iconMap  = { success: '✔',     warn: '⚠',      error: '✖',   step: '→',   raw: ''     };
+  const contentRows = Math.max(1, maxLines - 1); // reserve 1 row for the scroll indicator
+  const fromIdx     = follow ? Math.max(0, lines.length - contentRows) : offset;
+  const displayLines = lines.slice(fromIdx, fromIdx + contentRows);
+  const toIdx        = fromIdx + displayLines.length;
+  const total        = lines.length;
+
   return (
     <Box flexDirection="column">
       {displayLines.map((line, i) => (
-        <Text key={i} color={colorMap[line.type]}>
+        <Text key={fromIdx + i} color={colorMap[line.type]}>
           {iconMap[line.type] ? `${iconMap[line.type]} ` : ''}{line.text}
         </Text>
       ))}
+      {total > contentRows && (
+        <Text color="gray" dimColor>
+          {fromIdx > 0 ? `↑${fromIdx} ` : '     '}
+          [{fromIdx + 1}–{toIdx}/{total}]
+          {toIdx < total ? ` ↓${total - toIdx}` : ''}
+          {!follow && '  ↑↓ scroll'}
+        </Text>
+      )}
     </Box>
   );
 }
@@ -477,7 +495,17 @@ function App({ onDone }: AppProps) {
   const bodyHeight = Math.max(5, termRows - 4);
 
   // ── Core state ──────────────────────────────────────────────────────────────
-  const [hubInfo, setHubInfo]           = useState<HubInfo>(() => loadHubInfo());
+  const [hubInfo, setHubInfo]           = useState<HubInfo>({
+    initialized: false,
+    hubPath: getDefaultHubPath(),
+    lastSync: null,
+    skillCount: 0,
+    skillNames: [],
+    agents: [],
+  });
+
+  // Load hub info after first paint so the TUI appears immediately
+  useEffect(() => { setHubInfo(loadHubInfo()); }, []);
   const [focus, setFocus]               = useState<Focus>('sidebar');
   const [menuIdx, setMenuIdx]           = useState(1);
   const [screen, setScreen]             = useState<Screen>('home');
@@ -486,6 +514,7 @@ function App({ onDone }: AppProps) {
   const [agentsSubIdx, setAgentsSubIdx] = useState(1);
   const [listVerboseIdx, setListVerboseIdx] = useState(0);
   const [outputLines, setOutputLines]   = useState<OutputLine[]>([]);
+  const [outputScroll, setOutputScroll] = useState(0);
   const [statusMsg, setStatusMsg]       = useState('');
   const [statusType, setStatusType]     = useState<'info' | 'success' | 'warn' | 'error'>('info');
   const [spinnerIdx, setSpinnerIdx]     = useState(0);
@@ -517,7 +546,7 @@ function App({ onDone }: AppProps) {
     });
   }, []);
 
-  const clearOutput = useCallback(() => setOutputLines([]), []);
+  const clearOutput = useCallback(() => { setOutputLines([]); setOutputScroll(0); }, []);
 
   const setStatus = useCallback((msg: string, type: 'info' | 'success' | 'warn' | 'error') => {
     setStatusMsg(msg);
@@ -577,6 +606,7 @@ function App({ onDone }: AppProps) {
         setStatus(zh ? `✖ ${args[0]} 失败 (code ${code})` : `✖ ${args[0]} failed (code ${code})`, 'error');
       }
       refreshHub();
+      setOutputScroll(0);
     });
 
     child.on('error', (err) => {
@@ -842,6 +872,15 @@ function App({ onDone }: AppProps) {
     // ── Output focus ──────────────────────────────────────────────────────────
     if (focus === 'output') {
       if (key.escape || key.leftArrow) { setFocus('sidebar'); return; }
+      if (key.upArrow) {
+        setOutputScroll(s => Math.max(0, s - 1));
+        return;
+      }
+      if (key.downArrow) {
+        const contentRows = Math.max(1, Math.max(3, bodyHeight - 3) - 1);
+        setOutputScroll(s => Math.max(0, Math.min(Math.max(0, outputLines.length - contentRows), s + 1)));
+        return;
+      }
       if (input === 'c') { clearOutput(); return; }
       if (key.tab)       { setFocus('sidebar'); return; }
       return;
@@ -858,7 +897,7 @@ function App({ onDone }: AppProps) {
         setTextValue(agentsAddName);
         return;
       }
-      setFocus('sidebar'); setScreen('home'); setSession('idle'); return;
+      setFocus('sidebar'); setSession('idle'); previewMenuItem(MENU_ITEMS[menuIdx].value); return;
     }
 
     // ── After command finished ────────────────────────────────────────────────
@@ -1032,23 +1071,38 @@ function App({ onDone }: AppProps) {
           {MENU_ITEMS.map((item, i) => {
             const active = i === menuIdx;
             const lbl = label(item);
-            const line = padR(` ${item.emoji} ${lbl}`, SIDEBAR_W);
-            if (active && focus === 'sidebar') return <Text key={item.value} backgroundColor="cyan" color="black">{line}</Text>;
-            if (active) return <Text key={item.value} color="cyan">{'▶'}{padR(` ${item.emoji} ${lbl}`, SIDEBAR_W - 1)}</Text>;
-            return <Text key={item.value} color="gray">{line}</Text>;
+            const txt = ` ${item.emoji} ${lbl}`;
+            if (active && focus === 'sidebar') return (
+              <Box key={item.value} width={SIDEBAR_W}>
+                <Text backgroundColor="cyan" color="black" wrap="truncate">{txt}</Text>
+              </Box>
+            );
+            if (active) return (
+              <Box key={item.value} width={SIDEBAR_W}>
+                <Text color="cyan" wrap="truncate">{'▶'}{txt}</Text>
+              </Box>
+            );
+            return (
+              <Box key={item.value} width={SIDEBAR_W}>
+                <Text color="gray" wrap="truncate">{txt}</Text>
+              </Box>
+            );
           })}
         </Box>
 
         {/* Vertical separator */}
         <Box flexDirection="column" paddingTop={2}>
-          {MENU_ITEMS.map((_, i) => (<Text key={i} color="gray" dimColor>{'│'}</Text>))}
+          {(screen === 'running'
+            ? Array.from({ length: Math.max(MENU_ITEMS.length, bodyHeight - 2) }, (_, i) => (<Text key={i} color="gray" dimColor>{'│'}</Text>))
+            : MENU_ITEMS.map((_, i) => (<Text key={i} color="gray" dimColor>{'│'}</Text>))
+          )}
         </Box>
 
         {/* Content panel */}
         <Box flexDirection="column" flexGrow={1} paddingX={2}>
-          <Box marginBottom={0}>
+          <Box flexDirection="row">
             <Text bold color={focus === 'content' ? 'cyan' : 'white'}>{`${curItem.emoji}  ${label(curItem)}`}</Text>
-            <Text color="blue" dimColor>{'  ──────────────────────────────────────────'}</Text>
+            <Box flexGrow={1}><Text color="blue" dimColor>{'  '}{('─').repeat(Math.max(0, termCols - (SIDEBAR_W + 2) - 1 - 4 - 2))}</Text></Box>
           </Box>
 
           {/* Home */}
@@ -1056,7 +1110,7 @@ function App({ onDone }: AppProps) {
 
           {/* Text-input screens */}
           {['init-input', 'install-input', 'add-remote-input'].includes(screen) && (
-            <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="column">
               <Text bold>
                 {screen === 'init-input' && t('tui.initUrlPrompt')}
                 {screen === 'install-input' && t('tui.installNamePrompt')}
@@ -1068,7 +1122,7 @@ function App({ onDone }: AppProps) {
 
           {/* Agents-add (two-step) */}
           {screen === 'agents-add' && (
-            <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="column">
               <Text bold>{zh ? '添加自定义 Agent' : 'Add custom agent'}</Text>
               {agentsAddStep === 'name' && (
                 <Box flexDirection="column" marginTop={1}>
@@ -1087,7 +1141,7 @@ function App({ onDone }: AppProps) {
 
           {/* List verbose */}
           {screen === 'list-verbose' && (
-            <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="column">
               <Text bold>{t('tui.listVerbosePrompt')}</Text>
               <SelectList
                 items={[{ value: 'normal', label: t('tui.listNormal') }, { value: 'verbose', label: t('tui.listVerbose') }]}
@@ -1098,7 +1152,7 @@ function App({ onDone }: AppProps) {
 
           {/* Agents sub */}
           {screen === 'agents-sub' && (
-            <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="column">
               <Text bold>{t('tui.agentsSubcmdPrompt')}</Text>
               <SelectList
                 items={AGENTS_ITEMS.map(item => ({ value: item.value, label: t(item.labelKey as any), detail: t(item.descKey as any) }))}
@@ -1109,7 +1163,7 @@ function App({ onDone }: AppProps) {
 
           {/* Agents-select */}
           {screen === 'agents-select' && (
-            <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="column">
               <Text bold>{zh ? '选择要托管的 Agent' : 'Select agents to manage'}</Text>
               <MultiSelectList items={agentSelectItems} cursorIdx={agentSelectCursor} zh={zh} />
             </Box>
@@ -1117,7 +1171,7 @@ function App({ onDone }: AppProps) {
 
           {/* Single-select screens */}
           {['remove-pick', 'agents-enable', 'agents-disable', 'agents-remove', 'assign-pick-agent'].includes(screen) && (
-            <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="column">
               <Text bold>
                 {screen === 'remove-pick' && (zh ? '选择要删除的技能：' : 'Select skill to remove:')}
                 {screen === 'agents-enable' && (zh ? '选择要启用的 Agent：' : 'Select agent to enable:')}
@@ -1131,7 +1185,7 @@ function App({ onDone }: AppProps) {
 
           {/* Assign-pick-skills */}
           {screen === 'assign-pick-skills' && (
-            <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="column">
               <Text bold>{zh ? `为 ${assignAgentName} 选择技能` : `Select skills for ${assignAgentName}`}</Text>
               <MultiSelectList items={agentSelectItems} cursorIdx={agentSelectCursor} zh={zh} />
             </Box>
@@ -1139,7 +1193,7 @@ function App({ onDone }: AppProps) {
 
           {/* Language picker */}
           {screen === 'language-pick' && (
-            <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="column">
               <Text bold>{zh ? '选择语言 / Select language' : 'Select language / 选择语言'}</Text>
               <SelectList items={[{ value: 'en', label: 'English' }, { value: 'zh', label: '中文' }]} cursorIdx={langCursor} />
             </Box>
@@ -1147,14 +1201,14 @@ function App({ onDone }: AppProps) {
 
           {/* Running: loading */}
           {screen === 'running' && session === 'loading' && (
-            <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="column">
               <Box>
                 <Text color="cyan">{SPINNER[spinnerIdx]}</Text>
                 <Text color="white">{`  ${spinnerLabel}...`}</Text>
               </Box>
               <Box marginTop={1} flexDirection="column">
                 <Text color="gray" dimColor bold>{'─── Output ───'}</Text>
-                <OutputPanel lines={outputLines} />
+                <OutputPanel lines={outputLines} maxLines={Math.max(3, bodyHeight - 6)} follow={true} />
               </Box>
               <Box marginTop={1}>
                 <Text color="gray" dimColor>{zh ? 'Esc 取消' : 'Esc cancel'}</Text>
@@ -1164,11 +1218,11 @@ function App({ onDone }: AppProps) {
 
           {/* Running: finished */}
           {screen === 'running' && (session === 'success' || session === 'error') && (
-            <Box flexDirection="column" marginTop={1}>
-              <OutputPanel lines={outputLines} />
+            <Box flexDirection="column">
+              <OutputPanel lines={outputLines} maxLines={Math.max(3, bodyHeight - 3)} offset={outputScroll} />
               <Box marginTop={1}>
                 <Text color="gray" dimColor>
-                  {zh ? 'Enter 返回菜单  Tab 查看输出' : 'Enter back to menu  Tab view output'}
+                  {zh ? 'Enter 返回  ↑↓ 滚动  Tab 切换焦点' : 'Enter back  ↑↓ scroll  Tab switch focus'}
                 </Text>
               </Box>
             </Box>
