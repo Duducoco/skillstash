@@ -359,3 +359,28 @@ describe('listHubSkills', () => {
     expect(skills).toEqual(['real-skill']);
   });
 });
+
+describe('saveRegistry: .gitignore de-duplication', () => {
+  it('does not add duplicate entries on repeated saves', () => {
+    const reg = createEmptyRegistry();
+    saveRegistry(reg, hubDir);
+    saveRegistry(reg, hubDir); // second save
+
+    const gitignore = fs.readFileSync(path.join(hubDir, '.gitignore'), 'utf-8');
+    const lines = gitignore.split('\n').filter((l) => l.trim().length > 0);
+    expect(lines.filter((l) => l.trim() === 'local.json')).toHaveLength(1);
+    expect(lines.filter((l) => l.trim() === '.lock')).toHaveLength(1);
+  });
+
+  it('preserves existing non-skillstash .gitignore entries', () => {
+    fs.mkdirSync(hubDir, { recursive: true });
+    fs.writeFileSync(path.join(hubDir, '.gitignore'), 'node_modules\n', 'utf-8');
+
+    const reg = createEmptyRegistry();
+    saveRegistry(reg, hubDir);
+
+    const gitignore = fs.readFileSync(path.join(hubDir, '.gitignore'), 'utf-8');
+    expect(gitignore).toContain('node_modules');
+    expect(gitignore).toContain('local.json');
+  });
+});

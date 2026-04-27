@@ -78,6 +78,29 @@ describe('acquireLock', () => {
     expect(release).not.toBeNull();
     release!();
   });
+
+  it('acquires lock when .lock has wrong pid type (string instead of number)', () => {
+    const bad = JSON.stringify({ pid: 'not-a-number', timestamp: Date.now() });
+    fs.writeFileSync(lockFile(), bad, { flag: 'w' });
+    const release = acquireLock(tmpDir, 500);
+    expect(release).not.toBeNull();
+    release!();
+  });
+
+  it('acquires lock when .lock has wrong timestamp type (string instead of number)', () => {
+    const bad = JSON.stringify({ pid: process.pid, timestamp: 'not-a-number' });
+    fs.writeFileSync(lockFile(), bad, { flag: 'w' });
+    const release = acquireLock(tmpDir, 500);
+    expect(release).not.toBeNull();
+    release!();
+  });
+
+  it('acquires lock when .lock has missing fields', () => {
+    fs.writeFileSync(lockFile(), JSON.stringify({}), { flag: 'w' });
+    const release = acquireLock(tmpDir, 500);
+    expect(release).not.toBeNull();
+    release!();
+  });
 });
 
 describe('withLock', () => {

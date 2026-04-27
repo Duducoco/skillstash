@@ -234,3 +234,27 @@ describe('readJson / writeJson', () => {
     expect(raw.endsWith('\n')).toBe(true);
   });
 });
+
+describe('hashDir: path separator normalization', () => {
+  it('produces identical hashes for two directories with the same nested structure', () => {
+    const dirA = path.join(tmpDir, 'nested-a');
+    const dirB = path.join(tmpDir, 'nested-b');
+    fs.mkdirSync(path.join(dirA, 'sub', 'deep'), { recursive: true });
+    fs.mkdirSync(path.join(dirB, 'sub', 'deep'), { recursive: true });
+    fs.writeFileSync(path.join(dirA, 'sub', 'deep', 'file.txt'), 'same content');
+    fs.writeFileSync(path.join(dirB, 'sub', 'deep', 'file.txt'), 'same content');
+
+    expect(hashDir(dirA)).toBe(hashDir(dirB));
+  });
+
+  it('produces different hashes when nested file content differs', () => {
+    const dirA = path.join(tmpDir, 'diff-a');
+    const dirB = path.join(tmpDir, 'diff-b');
+    fs.mkdirSync(path.join(dirA, 'sub'), { recursive: true });
+    fs.mkdirSync(path.join(dirB, 'sub'), { recursive: true });
+    fs.writeFileSync(path.join(dirA, 'sub', 'file.txt'), 'content-a');
+    fs.writeFileSync(path.join(dirB, 'sub', 'file.txt'), 'content-b');
+
+    expect(hashDir(dirA)).not.toBe(hashDir(dirB));
+  });
+});

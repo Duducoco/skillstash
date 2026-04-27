@@ -258,3 +258,54 @@ describe('installFromPath: install from local directory', () => {
     expect(reg.skills['valid-skill']).toBeDefined();
   });
 });
+
+// ── resolveSafeSkillTarget (via installFromPath) ───────────────────────────────
+
+describe('installFromPath: path traversal rejection', () => {
+  it('rejects skill name containing ..', async () => {
+    const srcDir = path.join(tmpDir, 'traversal-skill');
+    fs.mkdirSync(srcDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(srcDir, 'SKILL.md'),
+      '---\nname: ../evil\nversion: 1.0.0\ndescription: bad\n---\nBody',
+      'utf-8',
+    );
+    await installFromPath(srcDir, hubDir, 'local', { lint: false });
+
+    const reg = loadRegistry(hubDir);
+    expect(reg.skills['../evil']).toBeUndefined();
+  });
+
+  it('rejects skill name containing a forward slash', async () => {
+    const srcDir = path.join(tmpDir, 'slash-skill');
+    fs.mkdirSync(srcDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(srcDir, 'SKILL.md'),
+      '---\nname: sub/skill\nversion: 1.0.0\ndescription: bad\n---\nBody',
+      'utf-8',
+    );
+    await installFromPath(srcDir, hubDir, 'local', { lint: false });
+
+    const reg = loadRegistry(hubDir);
+    expect(reg.skills['sub/skill']).toBeUndefined();
+  });
+
+  it('rejects overrideName that is a single dot', async () => {
+    const srcDir = makeSkillDir(tmpDir, 'dot-skill');
+    await installFromPath(srcDir, hubDir, 'local', { lint: false }, '.');
+
+    const reg = loadRegistry(hubDir);
+    // overrideName='.' → resolveSafeSkillTarget rejects it → not installed
+    expect(reg.skills['.']).toBeUndefined();
+    // The dot-skill name (from SKILL.md) is also not used because overrideName overrides
+    expect(reg.skills['dot-skill']).toBeUndefined();
+  });
+
+  it('accepts a valid simple skill name', async () => {
+    const srcDir = makeSkillDir(tmpDir, 'safe-skill');
+    await installFromPath(srcDir, hubDir, 'local', { lint: false });
+
+    const reg = loadRegistry(hubDir);
+    expect(reg.skills['safe-skill']).toBeDefined();
+  });
+});

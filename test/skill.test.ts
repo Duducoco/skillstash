@@ -221,3 +221,50 @@ describe('getSkillDescription', () => {
     cleanupDir(dir);
   });
 });
+
+describe('parseFrontmatter: additional edge cases', () => {
+  it('captures values that contain colons', () => {
+    const content = `---\nname: my-skill\ndescription: Use format: key:value\n---`;
+    const result = parseFrontmatter(content);
+    expect(result!.description).toBe('Use format: key:value');
+  });
+
+  it('parses keys that contain hyphens', () => {
+    const content = `---\nname: skill\ncustom-field: hello\n---`;
+    const result = parseFrontmatter(content);
+    expect(result!['custom-field']).toBe('hello');
+  });
+
+  it('handles frontmatter with only whitespace inside delimiters', () => {
+    const content = `---\n   \n---\nbody`;
+    // No valid key-value pairs → empty object (not null, because delimiters matched)
+    const result = parseFrontmatter(content);
+    expect(result).not.toBeNull();
+    expect(Object.keys(result!)).toHaveLength(0);
+  });
+
+  it('is not confused by --- inside body', () => {
+    const content = `---\nname: skill\n---\nSome body with ---\nhorizontal rule`;
+    const result = parseFrontmatter(content);
+    expect(result!.name).toBe('skill');
+  });
+});
+
+describe('lintSkill: additional edge cases', () => {
+  it('fails with correct errors on completely empty SKILL.md', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skillstash-test-'));
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), '', 'utf-8');
+    const result = lintSkill(dir);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('No YAML frontmatter found');
+    cleanupDir(dir);
+  });
+
+  it('accepts description_en as satisfying the description requirement', () => {
+    const dir = createTempSkillDir('name: skill\nversion: 1.0.0\ndescription_en: English desc');
+    const result = lintSkill(dir);
+    expect(result.valid).toBe(true);
+    expect(result.warnings).not.toContain('Missing recommended field: description');
+    cleanupDir(dir);
+  });
+});
