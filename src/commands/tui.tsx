@@ -174,7 +174,7 @@ const MENU_ITEMS: ReadonlyArray<{
   { value: 'link',       emoji: '🔗', zh: '链接',       en: 'Link',       descKey: 'tui.linkDesc'       },
   { value: 'diff',       emoji: '📊', zh: '差异',       en: 'Diff',       descKey: 'tui.diffDesc'       },
   { value: 'import',     emoji: '📥', zh: '导入',       en: 'Import',     descKey: 'tui.importDesc'     },
-  { value: 'remove',     emoji: '🗑️',  zh: '删除',       en: 'Remove',     descKey: 'tui.removeDesc'     },
+  { value: 'remove',     emoji: '🚮', zh: '删除',       en: 'Remove',     descKey: 'tui.removeDesc'     },
   { value: 'agents',     emoji: '🤖', zh: 'Agent 管理', en: 'Agents',    descKey: 'tui.agentsDesc'     },
   { value: 'assign',     emoji: '🎯', zh: '分配 skill', en: 'Assign',    descKey: 'tui.assignDesc'     },
   { value: 'language',   emoji: '🌍', zh: '语言',       en: 'Language',   descKey: 'tui.languageDesc'   },
@@ -320,7 +320,7 @@ function MultiSelectList({
   zh: boolean;
 }) {
   const termRows = process.stdout.rows || 24;
-  const pageSize = Math.max(5, Math.min(termRows - 10, items.length || 1));
+  const pageSize = Math.max(5, Math.min(termRows - 12, items.length || 1));
   const half = Math.floor(pageSize / 2);
   const start = Math.max(0, Math.min(cursorIdx - half, Math.max(0, items.length - pageSize)));
   const end = Math.min(items.length, start + pageSize);
@@ -389,7 +389,7 @@ function SelectList({
   cursorIdx: number;
 }) {
   const termRows = process.stdout.rows || 24;
-  const pageSize = Math.max(5, Math.min(termRows - 10, items.length || 1));
+  const pageSize = Math.max(5, Math.min(termRows - 12, items.length || 1));
   const half = Math.floor(pageSize / 2);
   const start = Math.max(0, Math.min(cursorIdx - half, Math.max(0, items.length - pageSize)));
   const end = Math.min(items.length, start + pageSize);
@@ -480,7 +480,7 @@ function OutputPanel({ lines, maxLines = 30, offset = 0, follow = false }: {
   return (
     <Box flexDirection="column">
       {displayLines.map((line, i) => (
-        <Text key={fromIdx + i} color={colorMap[line.type]}>
+        <Text key={fromIdx + i} color={colorMap[line.type]} wrap="truncate">
           {iconMap[line.type] ? `${iconMap[line.type]} ` : ''}{line.text}
         </Text>
       ))}
@@ -522,7 +522,7 @@ function App({ onDone }: AppProps) {
     return () => { process.stdout.off('resize', handleResize); };
   }, []);
 
-  // top-bar(1) + divider(1) + divider(1) + status-bar(1) = 4 fixed lines
+  // top-bar(1) + border-top(1) + border-bottom(1) + status-bar(1) = 4 fixed lines
   const bodyHeight = Math.max(5, termRows - 4);
 
   // ── Core state ──────────────────────────────────────────────────────────────
@@ -905,7 +905,7 @@ function App({ onDone }: AppProps) {
       if (key.return)     { selectMenuItem(MENU_ITEMS[menuIdx].value); return; }
       if (key.rightArrow || key.tab) {
         if (screen === 'running') setFocus('output');
-        else if (screen !== 'home') setFocus('content');
+        else setFocus('content');
         return;
       }
       if (input === 'q') { doExit(); return; }
@@ -917,6 +917,7 @@ function App({ onDone }: AppProps) {
     // ── Output focus ──────────────────────────────────────────────────────────
     if (focus === 'output') {
       if (key.escape || key.leftArrow) { setFocus('sidebar'); return; }
+      if (key.tab) { setFocus('content'); return; }
       if (key.upArrow) {
         setOutputScroll(s => Math.max(0, s - 1));
         return;
@@ -927,9 +928,11 @@ function App({ onDone }: AppProps) {
         return;
       }
       if (input === 'c') { clearOutput(); return; }
-      if (key.tab)       { setFocus('sidebar'); return; }
       return;
     }
+
+    // ── Content focus: Tab switches to output ──────────────────────────────────
+    if (focus === 'content' && key.tab) { setFocus('output'); return; }
 
     // ── Content focus: universal back ─────────────────────────────────────────
     if (key.escape || key.leftArrow) {
@@ -1084,6 +1087,194 @@ function App({ onDone }: AppProps) {
   const pills = hubInfo.agents.filter(a => a.available && a.enabled).slice(0, 5);
   const statusColorMap = { info: 'blue', success: 'green', warn: 'yellow', error: 'red' };
 
+  // Border colors based on focus
+  const sideBC = focus === 'sidebar' ? 'cyan' : 'gray';
+  const contBC = focus === 'content' ? 'cyan' : 'gray';
+  const outBC  = focus === 'output'   ? 'cyan' : 'gray';
+
+  // Layout widths (border chars: │sidebar│ │content│ │output│ = 4 vertical chars + 2 padding on each panel)
+  const SIDEBAR_INNER = SIDEBAR_W + 2;  // inner width (padX=1 each side)
+  const OUTPUT_FULL   = 36;             // output panel total column width (inner + 2 border separators)
+  const OUTPUT_INNER  = OUTPUT_FULL - 2; // inner width
+  // Column widths for top/bottom borders
+  const SIDE_BORDER_W = SIDEBAR_INNER;      // ─ chars between ┌ and ┬
+  const OUT_BORDER_W  = OUTPUT_INNER;       // ─ chars between ┬ and ┐
+  const CONT_BORDER_W = Math.max(0, termCols - SIDE_BORDER_W - OUT_BORDER_W - 4); // 4 = ┌┬┬┐
+
+  // ── Build border segments ───────────────────────────────────────────────────
+
+  // Full-height vertical border column
+  const vbar = (color: string) => (
+    <Box flexDirection="column">
+      {Array.from({length: bodyHeight}, (_, i) => <Text key={i} color={color}>│</Text>)}
+    </Box>
+  );
+
+  // Top border: ┌── Sidebar ──┬── Content ──┬── Output ──┐
+  const topBorder = (
+    <Box flexDirection="row">
+      <Text color={sideBC}>┌{'─'.repeat(SIDE_BORDER_W)}┬</Text>
+      <Text color={contBC}>{'─'.repeat(CONT_BORDER_W)}┬</Text>
+      <Text color={outBC}>{'─'.repeat(OUT_BORDER_W)}┐</Text>
+    </Box>
+  );
+
+  // Bottom border: └── Sidebar ──┴── Content ──┴── Output ──┘
+  const bottomBorder = (
+    <Box flexDirection="row">
+      <Text color={sideBC}>└{'─'.repeat(SIDE_BORDER_W)}┴</Text>
+      <Text color={contBC}>{'─'.repeat(CONT_BORDER_W)}┴</Text>
+      <Text color={outBC}>{'─'.repeat(OUT_BORDER_W)}┘</Text>
+    </Box>
+  );
+
+  // Content panel inner content
+  const contentInner = (
+    <Box flexDirection="column">
+      {/* Home */}
+      {screen === 'home' && <HomeContent hubInfo={hubInfo} loading={hubLoading} />}
+
+      {/* Text-input screens */}
+      {['init-input', 'install-input', 'add-remote-input'].includes(screen) && (
+        <Box flexDirection="column">
+          <Text bold>
+            {screen === 'init-input' && t('tui.initUrlPrompt')}
+            {screen === 'install-input' && t('tui.installNamePrompt')}
+            {screen === 'add-remote-input' && t('tui.addRemoteUrlPrompt')}
+          </Text>
+          <Box marginTop={1}><TextInput value={textValue} hint={zh ? '回车确认  Esc返回' : 'Enter confirm  Esc back'} /></Box>
+        </Box>
+      )}
+
+      {/* Agents-add (two-step) */}
+      {screen === 'agents-add' && (
+        <Box flexDirection="column">
+          <Text bold>{zh ? '添加自定义 Agent' : 'Add custom agent'}</Text>
+          {agentsAddStep === 'name' && (
+            <Box flexDirection="column" marginTop={1}>
+              <Text color="cyan">{zh ? 'Agent 名称：' : 'Agent name: '}</Text>
+              <TextInput value={textValue} hint={zh ? '回车继续  Esc返回' : 'Enter next  Esc back'} />
+            </Box>
+          )}
+          {agentsAddStep === 'path' && (
+            <Box flexDirection="column" marginTop={1}>
+              <Text color="cyan">{zh ? `技能目录路径（${agentsAddName}）：` : `Skills path (${agentsAddName}): `}</Text>
+              <TextInput value={textValue} hint={zh ? '回车确认  Esc改名称' : 'Enter confirm  Esc back to name'} />
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {/* List verbose */}
+      {screen === 'list-verbose' && (
+        <Box flexDirection="column">
+          <Text bold>{t('tui.listVerbosePrompt')}</Text>
+          <SelectList
+            items={[{ value: 'normal', label: t('tui.listNormal') }, { value: 'verbose', label: t('tui.listVerbose') }]}
+            cursorIdx={listVerboseIdx}
+          />
+        </Box>
+      )}
+
+      {/* Agents sub */}
+      {screen === 'agents-sub' && (
+        <Box flexDirection="column">
+          <Text bold>{t('tui.agentsSubcmdPrompt')}</Text>
+          <SelectList
+            items={AGENTS_ITEMS.map(item => ({ value: item.value, label: t(item.labelKey as any), detail: t(item.descKey as any) }))}
+            cursorIdx={agentsSubIdx}
+          />
+        </Box>
+      )}
+
+      {/* Agents-select */}
+      {screen === 'agents-select' && (
+        <Box flexDirection="column">
+          <Text bold>{zh ? '选择要托管的 Agent' : 'Select agents to manage'}</Text>
+          <MultiSelectList items={agentSelectItems} cursorIdx={agentSelectCursor} zh={zh} />
+        </Box>
+      )}
+
+      {/* Single-select screens */}
+      {['remove-pick', 'agents-enable', 'agents-disable', 'agents-remove', 'assign-pick-agent'].includes(screen) && (
+        <Box flexDirection="column">
+          <Text bold>
+            {screen === 'remove-pick' && (zh ? '选择要删除的技能：' : 'Select skill to remove:')}
+            {screen === 'agents-enable' && (zh ? '选择要启用的 Agent：' : 'Select agent to enable:')}
+            {screen === 'agents-disable' && (zh ? '选择要禁用的 Agent：' : 'Select agent to disable:')}
+            {screen === 'agents-remove' && (zh ? '选择要移除的 Agent：' : 'Select agent to remove:')}
+            {screen === 'assign-pick-agent' && (zh ? '选择要分配技能的 Agent：' : 'Select agent to assign skills to:')}
+          </Text>
+          <SelectList items={singleSelectItems} cursorIdx={singleSelectCursor} />
+        </Box>
+      )}
+
+      {/* Assign-pick-skills */}
+      {screen === 'assign-pick-skills' && (
+        <Box flexDirection="column">
+          <Text bold>{zh ? `为 ${assignAgentName} 选择技能` : `Select skills for ${assignAgentName}`}</Text>
+          <MultiSelectList items={agentSelectItems} cursorIdx={agentSelectCursor} zh={zh} />
+        </Box>
+      )}
+
+      {/* Language picker */}
+      {screen === 'language-pick' && (
+        <Box flexDirection="column">
+          <Text bold>{zh ? '选择语言 / Select language' : 'Select language / 选择语言'}</Text>
+          <SelectList items={[{ value: 'en', label: 'English' }, { value: 'zh', label: '中文' }]} cursorIdx={langCursor} />
+        </Box>
+      )}
+
+      {/* Confirm modal */}
+      {screen === 'confirm-modal' && (
+        <ConfirmModal message={confirmMessage} cursorIdx={confirmCursor} zh={zh} />
+      )}
+    </Box>
+  );
+
+  // Output panel inner content
+  const outputInner = (
+    <Box flexDirection="column">
+      {screen === 'running' && session === 'loading' && (
+        <Box flexDirection="column">
+          <Box>
+            <Text color="cyan">{SPINNER[spinnerIdx]}</Text>
+            <Text color="white">{`  ${spinnerLabel}...`}</Text>
+          </Box>
+          <Box marginTop={1}>
+            <OutputPanel lines={outputLines} maxLines={Math.max(3, bodyHeight - 4)} follow={true} />
+          </Box>
+          <Box marginTop={1}>
+            <Text color="gray" dimColor>{zh ? 'Esc 取消' : 'Esc cancel'}</Text>
+          </Box>
+        </Box>
+      )}
+
+      {screen === 'running' && (session === 'success' || session === 'error') && (
+        <Box flexDirection="column">
+          <OutputPanel lines={outputLines} maxLines={Math.max(3, bodyHeight - 2)} offset={outputScroll} />
+          <Box marginTop={1}>
+            <Text color="gray" dimColor>
+              {zh ? 'Enter 返回  ↑↓ 滚动  Tab 切换焦点' : 'Enter back  ↑↓ scroll  Tab switch focus'}
+            </Text>
+          </Box>
+        </Box>
+      )}
+
+      {screen !== 'running' && outputLines.length > 0 && (
+        <Box flexDirection="column">
+          <OutputPanel lines={outputLines} maxLines={Math.max(3, bodyHeight - 2)} offset={outputScroll} />
+        </Box>
+      )}
+
+      {screen !== 'running' && outputLines.length === 0 && (
+        <Box flexDirection="column" alignItems="center" justifyContent="center" flexGrow={1}>
+          <Text color="gray" dimColor italic>{zh ? '输出区域' : 'Output'}</Text>
+        </Box>
+      )}
+    </Box>
+  );
+
   return (
     <Box flexDirection="column">
 
@@ -1102,11 +1293,14 @@ function App({ onDone }: AppProps) {
         </Text>
       </Box>
 
-      {/* ── Divider ─────────────────────────────────────────────────────────── */}
-      <Text color="gray" dimColor>{'─'.repeat(termCols)}</Text>
+      {/* ── Border: top ─────────────────────────────────────────────────────── */}
+      {topBorder}
 
-      {/* ── Main body ───────────────────────────────────────────────────────── */}
+      {/* ── Main body (3 panels, shared borders) ───────────────────────────── */}
       <Box flexDirection="row" height={bodyHeight}>
+
+        {/* Left border │ */}
+        {vbar(sideBC)}
 
         {/* Sidebar */}
         <Box flexDirection="column" width={SIDEBAR_W + 2} paddingX={1}>
@@ -1116,172 +1310,54 @@ function App({ onDone }: AppProps) {
           {MENU_ITEMS.map((item, i) => {
             const active = i === menuIdx;
             const lbl = label(item);
-            const txt = ` ${item.emoji} ${lbl}`;
             if (active && focus === 'sidebar') return (
               <Box key={item.value} width={SIDEBAR_W}>
-                <Text backgroundColor="cyan" color="black" wrap="truncate">{txt}</Text>
+                <Text backgroundColor="cyan" color="black" wrap="truncate">{padR(` ${item.emoji} ${lbl}`, SIDEBAR_W)}</Text>
               </Box>
             );
             if (active) return (
               <Box key={item.value} width={SIDEBAR_W}>
-                <Text color="cyan" wrap="truncate">{'▶'}{txt}</Text>
+                <Box width={4}><Text color="cyan">{`▶${item.emoji}`}</Text></Box>
+                <Text color="cyan" wrap="truncate">{lbl}</Text>
               </Box>
             );
             return (
               <Box key={item.value} width={SIDEBAR_W}>
-                <Text color="gray" wrap="truncate">{txt}</Text>
+                <Box width={4}><Text color="gray">{` ${item.emoji}`}</Text></Box>
+                <Text color="gray" wrap="truncate">{lbl}</Text>
               </Box>
             );
           })}
         </Box>
 
-        {/* Vertical separator */}
-        <Box flexDirection="column" paddingTop={2}>
-          {(screen === 'running'
-            ? Array.from({ length: Math.max(MENU_ITEMS.length, bodyHeight - 2) }, (_, i) => (<Text key={i} color="gray" dimColor>{'│'}</Text>))
-            : MENU_ITEMS.map((_, i) => (<Text key={i} color="gray" dimColor>{'│'}</Text>))
-          )}
-        </Box>
+        {/* Separator │ between sidebar and content */}
+        {vbar(contBC)}
 
-        {/* Content panel */}
-        <Box flexDirection="column" flexGrow={1} paddingX={2}>
-          <Box flexDirection="row">
+        {/* Content */}
+        <Box flexDirection="column" flexGrow={1} paddingX={1}>
+          <Box flexDirection="row" marginBottom={1}>
             <Text bold color={focus === 'content' ? 'cyan' : 'white'}>{`${curItem.emoji}  ${label(curItem)}`}</Text>
-            <Box flexGrow={1}><Text color="blue" dimColor>{'  '}{('─').repeat(Math.max(0, termCols - (SIDEBAR_W + 2) - 1 - 4 - 2))}</Text></Box>
           </Box>
-
-          {/* Home */}
-          {screen === 'home' && <HomeContent hubInfo={hubInfo} loading={hubLoading} />}
-
-          {/* Text-input screens */}
-          {['init-input', 'install-input', 'add-remote-input'].includes(screen) && (
-            <Box flexDirection="column">
-              <Text bold>
-                {screen === 'init-input' && t('tui.initUrlPrompt')}
-                {screen === 'install-input' && t('tui.installNamePrompt')}
-                {screen === 'add-remote-input' && t('tui.addRemoteUrlPrompt')}
-              </Text>
-              <Box marginTop={1}><TextInput value={textValue} hint={zh ? '回车确认  Esc返回' : 'Enter confirm  Esc back'} /></Box>
-            </Box>
-          )}
-
-          {/* Agents-add (two-step) */}
-          {screen === 'agents-add' && (
-            <Box flexDirection="column">
-              <Text bold>{zh ? '添加自定义 Agent' : 'Add custom agent'}</Text>
-              {agentsAddStep === 'name' && (
-                <Box flexDirection="column" marginTop={1}>
-                  <Text color="cyan">{zh ? 'Agent 名称：' : 'Agent name: '}</Text>
-                  <TextInput value={textValue} hint={zh ? '回车继续  Esc返回' : 'Enter next  Esc back'} />
-                </Box>
-              )}
-              {agentsAddStep === 'path' && (
-                <Box flexDirection="column" marginTop={1}>
-                  <Text color="cyan">{zh ? `技能目录路径（${agentsAddName}）：` : `Skills path (${agentsAddName}): `}</Text>
-                  <TextInput value={textValue} hint={zh ? '回车确认  Esc改名称' : 'Enter confirm  Esc back to name'} />
-                </Box>
-              )}
-            </Box>
-          )}
-
-          {/* List verbose */}
-          {screen === 'list-verbose' && (
-            <Box flexDirection="column">
-              <Text bold>{t('tui.listVerbosePrompt')}</Text>
-              <SelectList
-                items={[{ value: 'normal', label: t('tui.listNormal') }, { value: 'verbose', label: t('tui.listVerbose') }]}
-                cursorIdx={listVerboseIdx}
-              />
-            </Box>
-          )}
-
-          {/* Agents sub */}
-          {screen === 'agents-sub' && (
-            <Box flexDirection="column">
-              <Text bold>{t('tui.agentsSubcmdPrompt')}</Text>
-              <SelectList
-                items={AGENTS_ITEMS.map(item => ({ value: item.value, label: t(item.labelKey as any), detail: t(item.descKey as any) }))}
-                cursorIdx={agentsSubIdx}
-              />
-            </Box>
-          )}
-
-          {/* Agents-select */}
-          {screen === 'agents-select' && (
-            <Box flexDirection="column">
-              <Text bold>{zh ? '选择要托管的 Agent' : 'Select agents to manage'}</Text>
-              <MultiSelectList items={agentSelectItems} cursorIdx={agentSelectCursor} zh={zh} />
-            </Box>
-          )}
-
-          {/* Single-select screens */}
-          {['remove-pick', 'agents-enable', 'agents-disable', 'agents-remove', 'assign-pick-agent'].includes(screen) && (
-            <Box flexDirection="column">
-              <Text bold>
-                {screen === 'remove-pick' && (zh ? '选择要删除的技能：' : 'Select skill to remove:')}
-                {screen === 'agents-enable' && (zh ? '选择要启用的 Agent：' : 'Select agent to enable:')}
-                {screen === 'agents-disable' && (zh ? '选择要禁用的 Agent：' : 'Select agent to disable:')}
-                {screen === 'agents-remove' && (zh ? '选择要移除的 Agent：' : 'Select agent to remove:')}
-                {screen === 'assign-pick-agent' && (zh ? '选择要分配技能的 Agent：' : 'Select agent to assign skills to:')}
-              </Text>
-              <SelectList items={singleSelectItems} cursorIdx={singleSelectCursor} />
-            </Box>
-          )}
-
-          {/* Assign-pick-skills */}
-          {screen === 'assign-pick-skills' && (
-            <Box flexDirection="column">
-              <Text bold>{zh ? `为 ${assignAgentName} 选择技能` : `Select skills for ${assignAgentName}`}</Text>
-              <MultiSelectList items={agentSelectItems} cursorIdx={agentSelectCursor} zh={zh} />
-            </Box>
-          )}
-
-          {/* Language picker */}
-          {screen === 'language-pick' && (
-            <Box flexDirection="column">
-              <Text bold>{zh ? '选择语言 / Select language' : 'Select language / 选择语言'}</Text>
-              <SelectList items={[{ value: 'en', label: 'English' }, { value: 'zh', label: '中文' }]} cursorIdx={langCursor} />
-            </Box>
-          )}
-
-          {/* Running: loading */}
-          {screen === 'running' && session === 'loading' && (
-            <Box flexDirection="column">
-              <Box>
-                <Text color="cyan">{SPINNER[spinnerIdx]}</Text>
-                <Text color="white">{`  ${spinnerLabel}...`}</Text>
-              </Box>
-              <Box marginTop={1} flexDirection="column">
-                <Text color="gray" dimColor bold>{'─── Output ───'}</Text>
-                <OutputPanel lines={outputLines} maxLines={Math.max(3, bodyHeight - 6)} follow={true} />
-              </Box>
-              <Box marginTop={1}>
-                <Text color="gray" dimColor>{zh ? 'Esc 取消' : 'Esc cancel'}</Text>
-              </Box>
-            </Box>
-          )}
-
-          {/* Running: finished */}
-          {screen === 'running' && (session === 'success' || session === 'error') && (
-            <Box flexDirection="column">
-              <OutputPanel lines={outputLines} maxLines={Math.max(3, bodyHeight - 3)} offset={outputScroll} />
-              <Box marginTop={1}>
-                <Text color="gray" dimColor>
-                  {zh ? 'Enter 返回  ↑↓ 滚动  Tab 切换焦点' : 'Enter back  ↑↓ scroll  Tab switch focus'}
-                </Text>
-              </Box>
-            </Box>
-          )}
-
-          {/* Confirm modal */}
-          {screen === 'confirm-modal' && (
-            <ConfirmModal message={confirmMessage} cursorIdx={confirmCursor} zh={zh} />
-          )}
+          {contentInner}
         </Box>
+
+        {/* Separator │ between content and output */}
+        {vbar(outBC)}
+
+        {/* Output */}
+        <Box flexDirection="column" width={OUTPUT_FULL - 2} paddingX={1}>
+          <Box marginBottom={1}>
+            <Text bold color={focus === 'output' ? 'cyan' : 'gray'}>{zh ? '输出' : 'Output'}</Text>
+          </Box>
+          {outputInner}
+        </Box>
+
+        {/* Right border │ */}
+        {vbar(outBC)}
       </Box>
 
-      {/* ── Divider ─────────────────────────────────────────────────────────── */}
-      <Text color="gray" dimColor>{'─'.repeat(termCols)}</Text>
+      {/* ── Border: bottom ──────────────────────────────────────────────────── */}
+      {bottomBorder}
 
       {/* ── Status bar ──────────────────────────────────────────────────────── */}
       <Box paddingX={1}>
@@ -1319,7 +1395,10 @@ export async function launchTUI(): Promise<string[] | null> {
 
   let result: string[] | null = null;
   try {
-    const { waitUntilExit } = render(<App onDone={args => { result = args; }} />);
+    const { waitUntilExit } = render(<App onDone={args => { result = args; }} />, {
+      exitOnCtrlC: false,
+      patchConsole: true,
+    });
     await waitUntilExit().catch((err) => {
       if (process.env.SKILLSTASH_DEBUG) console.error('[TUI error]', err);
     });
