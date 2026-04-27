@@ -94,7 +94,11 @@ export function registerAssignCommand(program: Command): void {
               copyDirRecursive(srcDir, destDir);
             } else if (agent.linkType === 'symlink' || agent.linkType === 'junction') {
               if (exists(destDir)) fs.rmSync(destDir, { recursive: true, force: true });
-              fs.symlinkSync(srcDir, destDir, 'junction');
+              try {
+                fs.symlinkSync(srcDir, destDir, 'junction');
+              } catch {
+                copyDirRecursive(srcDir, destDir);
+              }
             } else {
               logger.error(
                 t('common.skillLinkError', {

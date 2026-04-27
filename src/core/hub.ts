@@ -42,17 +42,18 @@ function ensureGitignore(hubPath: string): void {
   ensureDir(hubPath);
   const gitignorePath = path.join(hubPath, '.gitignore');
   const entries = ['local.json', '.lock'];
-  if (!exists(gitignorePath)) {
-    fs.writeFileSync(gitignorePath, entries.join('\n') + '\n', 'utf-8');
-  } else {
-    let content = fs.readFileSync(gitignorePath, 'utf-8');
-    const lines = content.split('\n').map((l) => l.trim());
-    for (const entry of entries) {
-      if (!lines.includes(entry)) {
-        content = content.endsWith('\n') ? content + entry + '\n' : content + '\n' + entry + '\n';
-      }
+  const content = exists(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf-8') : '';
+  const lines = content.split('\n').filter(l => l.trim().length > 0);
+  const lineSet = new Set(lines);
+  let modified = false;
+  for (const entry of entries) {
+    if (!lineSet.has(entry)) {
+      lines.push(entry);
+      modified = true;
     }
-    fs.writeFileSync(gitignorePath, content, 'utf-8');
+  }
+  if (modified || !exists(gitignorePath)) {
+    fs.writeFileSync(gitignorePath, lines.join('\n') + '\n', 'utf-8');
   }
 }
 
@@ -96,25 +97,31 @@ export function loadRegistry(hubPath?: string): Registry {
 
   // One-time migration: old registry.json stored agents/lastSync/SkillMeta.agents inline.
   // If local.json doesn't exist yet, bootstrap it from the old-format data.
+  // Double-check pattern: check outside lock for speed, re-check inside lock for safety.
   if (!exists(localPath)) {
-    ensureGitignore(hp);
-    const skillAgents: Record<string, string[]> = {};
-    for (const [name, meta] of Object.entries(raw.skills || {}) as [string, any][]) {
-      if (Array.isArray(meta.agents) && meta.agents.length > 0) {
-        skillAgents[name] = meta.agents;
+    withLock(hp, () => {
+      if (!exists(localPath)) {
+        ensureGitignore(hp);
+        const skillAgents: Record<string, string[]> = {};
+        for (const [name, meta] of Object.entries(raw.skills || {}) as [string, any][]) {
+          if (Array.isArray(meta.agents) && meta.agents.length > 0) {
+            skillAgents[name] = meta.agents;
+          }
+        }
+        const migratedLocal: LocalState = {
+          lastSync: raw.lastSync ?? null,
+          agents: raw.agents || {},
+          skillAgents,
+        };
+        for (const name of Object.keys(migratedLocal.agents)) {
+          if ((migratedLocal.agents[name] as any).enabled === undefined) {
+            migratedLocal.agents[name].enabled = true;
+          }
+        }
+        // Write directly (we already hold the lock, can't call saveLocalState which also locks)
+        writeJson(getLocalPath(hp), migratedLocal);
       }
-    }
-    const migratedLocal: LocalState = {
-      lastSync: raw.lastSync ?? null,
-      agents: raw.agents || {},
-      skillAgents,
-    };
-    for (const name of Object.keys(migratedLocal.agents)) {
-      if ((migratedLocal.agents[name] as any).enabled === undefined) {
-        migratedLocal.agents[name].enabled = true;
-      }
-    }
-    saveLocalState(migratedLocal, hp);
+    });
   }
 
   const local = loadLocalState(hp);

@@ -9,7 +9,8 @@ import { t } from '../i18n/index.js';
  */
 export async function selectAgents(agents: AgentConfig[]): Promise<Set<string>> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    return new Set(agents.filter((a) => a.available).map((a) => a.name));
+    // Respect enabled flag: don't force-enable agents the user previously disabled
+    return new Set(agents.filter((a) => a.available && a.enabled).map((a) => a.name));
   }
 
   const choices = agents.map((agent) => ({

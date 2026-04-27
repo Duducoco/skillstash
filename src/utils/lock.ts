@@ -38,12 +38,12 @@ function tryAcquire(lp: string): boolean {
 function isLockStale(lp: string): boolean {
   try {
     const raw = fs.readFileSync(lp, 'utf-8');
-    const { pid, timestamp } = JSON.parse(raw) as LockContent;
-    if (Date.now() - timestamp > STALE_LOCK_MS) return true;
-    if (!isProcessAlive(pid)) return true;
+    const data = JSON.parse(raw);
+    if (typeof data.pid !== 'number' || typeof data.timestamp !== 'number') return true;
+    if (Date.now() - data.timestamp > STALE_LOCK_MS) return true;
+    if (!isProcessAlive(data.pid)) return true;
     return false;
   } catch {
-    // If we can't read/parse the lock, treat it as stale
     return true;
   }
 }
@@ -55,8 +55,8 @@ function removeLock(lp: string): void {
 }
 
 function syncSleep(ms: number): void {
-  const end = Date.now() + ms;
-  while (Date.now() < end) { /* spin */ }
+  // Atomics.wait blocks the thread without burning CPU (unlike a busy-wait loop)
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 export function acquireLock(hubPath: string, timeoutMs = 10_000): (() => void) | null {

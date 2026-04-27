@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -49,7 +49,7 @@ export function gitProbeRemote(remoteUrl: string): { empty: boolean; hasRegistry
 
   try {
     // ls-remote exits with code 0 even on empty repos, but stdout is empty
-    const output = execSync(`git ls-remote "${remoteUrl}"`, {
+    const output = execFileSync('git', ['ls-remote', remoteUrl], {
       stdio: ['pipe', 'pipe', 'pipe'],
       encoding: 'utf-8',
       timeout: 30_000,
@@ -78,7 +78,7 @@ function gitRemoteHasFile(remoteUrl: string, filePath: string): boolean {
 
   try {
     // Shallow clone with depth 1
-    execSync(`git clone --depth 1 "${remoteUrl}" "${tmpDir}"`, {
+    execFileSync('git', ['clone', '--depth', '1', remoteUrl, tmpDir], {
       stdio: 'pipe',
       timeout: 60_000,
     });
@@ -111,7 +111,7 @@ export function gitClone(remoteUrl: string, hubPath: string): boolean {
     // Ensure parent directory exists
     fs.mkdirSync(path.dirname(hubPath), { recursive: true });
 
-    execSync(`git clone "${remoteUrl}" "${hubPath}"`, {
+    execFileSync('git', ['clone', remoteUrl, hubPath], {
       stdio: 'pipe',
       timeout: 120_000,
     });
@@ -129,12 +129,12 @@ export function gitAddRemote(hubPath: string, remoteUrl: string): boolean {
   if (!gitAvailable()) return false;
 
   try {
-    execSync(`git remote add origin "${remoteUrl}"`, { cwd: hubPath, stdio: 'pipe', timeout: 15_000 });
+    execFileSync('git', ['remote', 'add', 'origin', remoteUrl], { cwd: hubPath, stdio: 'pipe', timeout: 15_000 });
     return true;
   } catch (e) {
     // Remote might already exist — try set-url instead
     try {
-      execSync(`git remote set-url origin "${remoteUrl}"`, { cwd: hubPath, stdio: 'pipe', timeout: 15_000 });
+      execFileSync('git', ['remote', 'set-url', 'origin', remoteUrl], { cwd: hubPath, stdio: 'pipe', timeout: 15_000 });
       return true;
     } catch (e2) {
       logger.warn(`Failed to add/set remote: ${(e2 as Error).message}`);
@@ -431,7 +431,7 @@ export function gitShallowClone(remoteUrl: string): GitCloneResult {
 
   const tmpDir = path.join(os.tmpdir(), `skillstash-gh-${Date.now()}`);
   try {
-    execSync(`git clone --depth 1 "${remoteUrl}" "${tmpDir}"`, {
+    execFileSync('git', ['clone', '--depth', '1', remoteUrl, tmpDir], {
       stdio: 'pipe',
       timeout: 120_000,
     });

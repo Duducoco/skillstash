@@ -328,10 +328,29 @@ export async function installFromPath(
     logger.step(t('install.installingSkill', { name: chalk.bold(name), version }));
   }
 
-  if (exists(destDir)) {
-    removeDir(destDir);
+  // Atomic install: rename existing dir to a backup, copy new content, then clean up.
+  // On failure the backup is restored so the hub is never left in a broken state.
+  const backupDir = isUpdate ? `${destDir}.bak` : null;
+  try {
+    if (exists(destDir)) {
+      if (backupDir) {
+        fs.renameSync(destDir, backupDir);
+      } else {
+        removeDir(destDir);
+      }
+    }
+    copyDirRecursive(skillDir, destDir);
+    if (backupDir && exists(backupDir)) {
+      removeDir(backupDir);
+    }
+  } catch (e) {
+    if (backupDir && exists(backupDir)) {
+      if (exists(destDir)) removeDir(destDir);
+      fs.renameSync(backupDir, destDir);
+    }
+    logger.error(`${t('install.installingSkill', { name, version })}: copy failed — ${(e as Error).message}`);
+    return;
   }
-  copyDirRecursive(skillDir, destDir);
   const hash = hashDir(destDir);
 
   if (isUpdate) {

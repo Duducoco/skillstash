@@ -199,6 +199,7 @@ export async function initLocalHub(
 
   if (!gitInit(hubPath)) {
     logger.error(t('init.gitInitFailed'));
+    try { removeDir(hubPath); } catch { /* best effort */ }
     return;
   }
   logger.success(t('init.gitInitialized'));
@@ -264,6 +265,7 @@ export async function initFreshHub(
   // Initialize git
   if (!gitInit(hubPath)) {
     logger.error(t('init.gitInitFailed'));
+    try { removeDir(hubPath); } catch { /* best effort */ }
     return;
   }
   logger.success(t('init.gitInitialized'));

@@ -289,9 +289,9 @@ function MultiSelectList({
   zh: boolean;
 }) {
   const termRows = process.stdout.rows || 24;
-  const pageSize = Math.max(5, termRows - 10);
+  const pageSize = Math.max(5, Math.min(termRows - 10, items.length || 1));
   const half = Math.floor(pageSize / 2);
-  const start = Math.max(0, Math.min(cursorIdx - half, items.length - pageSize));
+  const start = Math.max(0, Math.min(cursorIdx - half, Math.max(0, items.length - pageSize)));
   const end = Math.min(items.length, start + pageSize);
   const visible = items.slice(start, end);
 
@@ -358,9 +358,9 @@ function SelectList({
   cursorIdx: number;
 }) {
   const termRows = process.stdout.rows || 24;
-  const pageSize = Math.max(5, termRows - 10);
+  const pageSize = Math.max(5, Math.min(termRows - 10, items.length || 1));
   const half = Math.floor(pageSize / 2);
-  const start = Math.max(0, Math.min(cursorIdx - half, items.length - pageSize));
+  const start = Math.max(0, Math.min(cursorIdx - half, Math.max(0, items.length - pageSize)));
   const end = Math.min(items.length, start + pageSize);
   const visible = items.slice(start, end);
 
@@ -459,6 +459,22 @@ interface AppProps {
 
 function App({ onDone }: AppProps) {
   const { exit } = useApp();
+
+  // ── Terminal dimensions (reactive to resize) ─────────────────────────────────
+  const [termRows, setTermRows] = useState(process.stdout.rows || 24);
+  const [termCols, setTermCols] = useState(process.stdout.columns || 80);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setTermRows(process.stdout.rows || 24);
+      setTermCols(process.stdout.columns || 80);
+    };
+    process.stdout.on('resize', handleResize);
+    return () => { process.stdout.off('resize', handleResize); };
+  }, []);
+
+  // top-bar(1) + divider(1) + divider(1) + status-bar(1) = 4 fixed lines
+  const bodyHeight = Math.max(5, termRows - 4);
 
   // ── Core state ──────────────────────────────────────────────────────────────
   const [hubInfo, setHubInfo]           = useState<HubInfo>(() => loadHubInfo());
@@ -904,8 +920,8 @@ function App({ onDone }: AppProps) {
 
     // ── List verbose picker ────────────────────────────────────────────────────
     if (screen === 'list-verbose') {
-      if (key.upArrow)   { setListVerboseIdx(0); return; }
-      if (key.downArrow) { setListVerboseIdx(1); return; }
+      if (key.upArrow)   { setListVerboseIdx(i => (i - 1 + 2) % 2); return; }
+      if (key.downArrow) { setListVerboseIdx(i => (i + 1) % 2); return; }
       if (key.return)    { execSimple(listVerboseIdx === 1 ? ['list', '--verbose'] : ['list']); return; }
       return;
     }
@@ -946,7 +962,7 @@ function App({ onDone }: AppProps) {
         if (screen === 'assign-pick-skills') { commitAssign(); return; }
       }
       if (input === 'a') { setAgentSelectItems(prev => prev.map(item => ({ ...item, checked: !item.disabled }))); return; }
-      if (input === 'i') { setAgentSelectItems(prev => prev.map(item => ({ ...item, checked: !item.checked && !item.disabled }))); return; }
+      if (input === 'i') { setAgentSelectItems(prev => prev.map(item => item.disabled ? item : { ...item, checked: !item.checked })); return; }
       return;
     }
 
@@ -1003,10 +1019,10 @@ function App({ onDone }: AppProps) {
       </Box>
 
       {/* ── Divider ─────────────────────────────────────────────────────────── */}
-      <Text color="gray" dimColor>{'─'.repeat(process.stdout.columns || 100)}</Text>
+      <Text color="gray" dimColor>{'─'.repeat(termCols)}</Text>
 
       {/* ── Main body ───────────────────────────────────────────────────────── */}
-      <Box flexDirection="row">
+      <Box flexDirection="row" height={bodyHeight}>
 
         {/* Sidebar */}
         <Box flexDirection="column" width={SIDEBAR_W + 2} paddingX={1}>
@@ -1166,7 +1182,7 @@ function App({ onDone }: AppProps) {
       </Box>
 
       {/* ── Divider ─────────────────────────────────────────────────────────── */}
-      <Text color="gray" dimColor>{'─'.repeat(process.stdout.columns || 100)}</Text>
+      <Text color="gray" dimColor>{'─'.repeat(termCols)}</Text>
 
       {/* ── Status bar ──────────────────────────────────────────────────────── */}
       <Box paddingX={1}>
@@ -1199,9 +1215,19 @@ function App({ onDone }: AppProps) {
 export async function launchTUI(): Promise<string[] | null> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) return null;
 
+  // Enter alternate screen buffer + hide cursor (standard fullscreen terminal app pattern)
+  process.stdout.write('\x1b[?1049h\x1b[?25l\x1b[2J\x1b[H');
+
   let result: string[] | null = null;
-  const { waitUntilExit } = render(<App onDone={args => { result = args; }} />);
-  await waitUntilExit().catch(() => {});
+  try {
+    const { waitUntilExit } = render(<App onDone={args => { result = args; }} />);
+    await waitUntilExit().catch((err) => {
+      if (process.env.SKILLSTASH_DEBUG) console.error('[TUI error]', err);
+    });
+  } finally {
+    // Exit alternate screen buffer + restore cursor unconditionally
+    process.stdout.write('\x1b[?1049l\x1b[?25h');
+  }
   return result;
 }
 

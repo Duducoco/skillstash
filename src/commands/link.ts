@@ -81,7 +81,12 @@ export function registerLinkCommand(program: Command): void {
               if (exists(destDir)) {
                 fs.rmSync(destDir, { recursive: true, force: true });
               }
-              fs.symlinkSync(srcDir, destDir, 'junction');
+              try {
+                fs.symlinkSync(srcDir, destDir, 'junction');
+              } catch {
+                // junction/symlink may fail on restricted environments — fall back to copy
+                copyDirRecursive(srcDir, destDir);
+              }
             } else {
               logger.warn(`  ! ${skillName}: unsupported link type "${agent.linkType}"`);
               continue;

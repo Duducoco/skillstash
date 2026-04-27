@@ -88,11 +88,15 @@ export function registerSyncCommand(program: Command): void {
               }
             }
 
+            // Save original registry content so we can restore it if the merge commit fails
+            const registryPath = getRegistryPath(hubPath);
+            const registryBackup = fs.readFileSync(registryPath, 'utf-8');
+
             // git merge will overwrite registry.json — run it first, then overwrite with our result
             gitMergeNoCommit(hubPath, 'FETCH_HEAD');
 
             // Write app-level merged registry (always wins over git's textual merge)
-            writeJson(getRegistryPath(hubPath), { version: oursRaw.version ?? '1.0', skills: mergedSkills });
+            writeJson(registryPath, { version: oursRaw.version ?? '1.0', skills: mergedSkills });
             gitStagePath(hubPath, 'registry.json');
 
             // Resolve any remaining conflicted skill files using winnerMap
@@ -113,6 +117,8 @@ export function registerSyncCommand(program: Command): void {
             const committed = gitCommitMerge(hubPath, 'sync: merge remote changes');
             if (!committed) {
               gitMergeAbort(hubPath);
+              // Restore the pre-merge registry.json so the hub stays consistent
+              fs.writeFileSync(registryPath, registryBackup, 'utf-8');
               logger.error(t('sync.mergeCommitFailed'));
               return;
             }
@@ -139,7 +145,14 @@ export function registerSyncCommand(program: Command): void {
           issues++;
           continue;
         }
-        const currentHash = hashDir(skillDir);
+        let currentHash: string;
+        try {
+          currentHash = hashDir(skillDir);
+        } catch (e) {
+          logger.warn(`  ⚠ ${name}: hash failed (${(e as Error).message})`);
+          issues++;
+          continue;
+        }
         if (currentHash !== registry.skills[name].hash) {
           logger.step(t('sync.skillHashChanged', { name }));
           updateSkillInRegistry(registry, name, { hash: currentHash });

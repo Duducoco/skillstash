@@ -61,7 +61,8 @@ export function hashDir(dir: string): string {
   files.sort(); // deterministic order
 
   for (const file of files) {
-    const relativePath = path.relative(dir, file);
+    // Normalize to forward slashes so the hash is identical on Windows and Unix
+    const relativePath = path.relative(dir, file).split(path.sep).join('/');
     hash.update(relativePath + '\0');
     const content = fs.readFileSync(file);
     hash.update(content);
