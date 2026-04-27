@@ -145,19 +145,28 @@ export function gitAddRemote(hubPath: string, remoteUrl: string): boolean {
 
 /**
  * Initial push: set upstream and push.
+ * If the remote already has commits (diverged history), fetches and merges
+ * with --allow-unrelated-histories before retrying the push.
  */
 export function gitPushSetUpstream(hubPath: string, branch: string = 'main'): boolean {
   if (!gitAvailable()) return false;
 
+  const pushBranch = currentBranch(hubPath) || 'master';
   try {
-    // Ensure we're on the right branch
-    const current = currentBranch(hubPath) || 'master';
-    const pushBranch = current;
     execSync(`git push -u origin ${pushBranch}`, { cwd: hubPath, stdio: 'pipe', timeout: 60_000 });
     return true;
-  } catch (e) {
-    logger.warn(`Git push -u origin failed: ${(e as Error).message}`);
-    return false;
+  } catch {
+    // Remote rejected push — it likely already has commits.
+    // Fetch and merge unrelated histories, then retry.
+    try {
+      execSync('git fetch origin', { cwd: hubPath, stdio: 'pipe', timeout: 60_000 });
+      execSync('git merge --allow-unrelated-histories FETCH_HEAD', { cwd: hubPath, stdio: 'pipe', timeout: 30_000 });
+      execSync(`git push -u origin ${pushBranch}`, { cwd: hubPath, stdio: 'pipe', timeout: 60_000 });
+      return true;
+    } catch (e2) {
+      logger.warn(`Git push -u origin failed: ${(e2 as Error).message}`);
+      return false;
+    }
   }
 }
 
