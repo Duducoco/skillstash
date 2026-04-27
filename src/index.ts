@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
+import { createRequire } from 'module';
 import { Command } from 'commander';
 import chalk from 'chalk';
+
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json') as { version: string };
 
 import { registerInitCommand } from './commands/init.js';
 import { registerInstallCommand } from './commands/install.js';
@@ -37,7 +41,7 @@ const program = new Command();
 program
   .name('skillstash')
   .description('Personal skill management system with multi-device & multi-agent sync')
-  .version('0.11.0')
+  .version(version)
   .helpOption('-h, --help', 'Show help');
 
 // Register all commands
