@@ -7,22 +7,6 @@ import chalk from 'chalk';
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
 
-import { registerInitCommand } from './commands/init.js';
-import { registerInstallCommand } from './commands/install.js';
-import { registerLinkCommand } from './commands/link.js';
-import { registerListCommand } from './commands/list.js';
-import { registerSyncCommand } from './commands/sync.js';
-import { registerDiffCommand } from './commands/diff.js';
-
-import { registerRemoveCommand } from './commands/remove.js';
-import { registerImportCommand } from './commands/import.js';
-
-import { registerAgentsCommand } from './commands/agents.js';
-import { registerAssignCommand } from './commands/assign.js';
-import { registerLanguageCommand } from './commands/language.js';
-import { registerAddRemoteCommand } from './commands/add-remote.js';
-import { launchTUI } from './commands/tui.js';
-
 import './i18n/en.js';
 import './i18n/zh.js';
 import { setLocale, type Locale } from './i18n/index.js';
@@ -43,21 +27,6 @@ program
   .description('Personal skill management system with multi-device & multi-agent sync')
   .version(version)
   .helpOption('-h, --help', 'Show help');
-
-// Register all commands
-registerInitCommand(program);
-registerInstallCommand(program);
-registerLinkCommand(program);
-registerListCommand(program);
-registerSyncCommand(program);
-registerDiffCommand(program);
-
-registerRemoveCommand(program);
-registerAgentsCommand(program);
-registerAssignCommand(program);
-registerImportCommand(program);
-registerLanguageCommand(program);
-registerAddRemoteCommand(program);
 
 // Custom help display
 program.addHelpText('after', `
@@ -100,18 +69,64 @@ ${chalk.bold('Examples:')}
   $ skillstash remove old-skill
 `);
 
+async function registerAllCommands(): Promise<void> {
+  const [
+    { registerInitCommand },
+    { registerInstallCommand },
+    { registerLinkCommand },
+    { registerListCommand },
+    { registerSyncCommand },
+    { registerDiffCommand },
+    { registerRemoveCommand },
+    { registerAgentsCommand },
+    { registerAssignCommand },
+    { registerImportCommand },
+    { registerLanguageCommand },
+    { registerAddRemoteCommand },
+  ] = await Promise.all([
+    import('./commands/init.js'),
+    import('./commands/install.js'),
+    import('./commands/link.js'),
+    import('./commands/list.js'),
+    import('./commands/sync.js'),
+    import('./commands/diff.js'),
+    import('./commands/remove.js'),
+    import('./commands/agents.js'),
+    import('./commands/assign.js'),
+    import('./commands/import.js'),
+    import('./commands/language.js'),
+    import('./commands/add-remote.js'),
+  ]);
+
+  registerInitCommand(program);
+  registerInstallCommand(program);
+  registerLinkCommand(program);
+  registerListCommand(program);
+  registerSyncCommand(program);
+  registerDiffCommand(program);
+  registerRemoveCommand(program);
+  registerAgentsCommand(program);
+  registerAssignCommand(program);
+  registerImportCommand(program);
+  registerLanguageCommand(program);
+  registerAddRemoteCommand(program);
+}
+
 // When invoked with no arguments and in an interactive terminal, launch TUI.
 // Explicit subcommands, flags, and `--help` / `--version` bypass TUI.
 const rawArgs = process.argv.slice(2);
 const hasFlagOrCmd = rawArgs.length > 0;
 
 if (!hasFlagOrCmd) {
+  // TUI path: load React/Ink only here; command modules loaded only if TUI returns args
+  const { launchTUI } = await import('./commands/tui.js');
   const selectedArgs = await launchTUI();
   if (selectedArgs !== null) {
+    await registerAllCommands();
     await program.parseAsync(selectedArgs, { from: 'user' });
-  } else {
-    program.help();
   }
 } else {
+  // CLI path: load command modules; skip React/Ink entirely
+  await registerAllCommands();
   await program.parseAsync(process.argv);
 }
