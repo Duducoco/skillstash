@@ -725,6 +725,39 @@ function App({ onDone }: AppProps) {
   // ── Exit ──────────────────────────────────────────────────────────────────────
   const doExit = useCallback(() => { exit(); onDone(null); }, [exit, onDone]);
 
+  // ── Preview sidebar item → update right panel without changing focus ─────────
+  const previewMenuItem = useCallback((choice: MainChoice) => {
+    if (choice === 'exit' || choice === 'home') { setScreen('home'); return; }
+    const simpleCmds: MainChoice[] = ['sync', 'link', 'diff', 'import'];
+    if (simpleCmds.includes(choice)) { setScreen('home'); return; }
+    setTextValue('');
+    setAgentsAddStep('name');
+    setAgentsAddName('');
+    if (choice === 'init')       { setScreen('init-input'); return; }
+    if (choice === 'install')    { setScreen('install-input'); return; }
+    if (choice === 'add-remote') { setScreen('add-remote-input'); return; }
+    if (choice === 'list')       { setListVerboseIdx(0); setScreen('list-verbose'); return; }
+    if (choice === 'agents')     { setAgentsSubIdx(1); setScreen('agents-sub'); return; }
+    if (choice === 'language')   { setLangCursor(getLocale() === 'zh' ? 1 : 0); setScreen('language-pick'); return; }
+    if (choice === 'remove') {
+      if (!hubInfo.initialized || hubInfo.skillNames.length === 0) { setScreen('home'); return; }
+      setSingleSelectItems(hubInfo.skillNames.map(name => ({ value: name, label: name })));
+      setSingleSelectCursor(0);
+      setScreen('remove-pick');
+      return;
+    }
+    if (choice === 'assign') {
+      if (!hubInfo.initialized) { setScreen('home'); return; }
+      const reg = loadRegistry(hubInfo.hubPath);
+      const enabledAgents = Object.values(reg.agents).filter((a: AgentConfig) => a.available && a.enabled);
+      if (enabledAgents.length === 0) { setScreen('home'); return; }
+      setSingleSelectItems(enabledAgents.map(a => ({ value: a.name, label: a.name })));
+      setSingleSelectCursor(0);
+      setScreen('assign-pick-agent');
+      return;
+    }
+  }, [hubInfo]);
+
   // ── Navigate sidebar → screen ────────────────────────────────────────────────
   const selectMenuItem = useCallback((choice: MainChoice) => {
     if (choice === 'exit')  { doExit(); return; }
@@ -776,8 +809,8 @@ function App({ onDone }: AppProps) {
 
     // ── Sidebar focus ─────────────────────────────────────────────────────────
     if (focus === 'sidebar') {
-      if (key.upArrow)    { setMenuIdx(i => Math.max(0, i - 1)); return; }
-      if (key.downArrow)  { setMenuIdx(i => Math.min(MENU_ITEMS.length - 1, i + 1)); return; }
+      if (key.upArrow)   { const i = Math.max(0, menuIdx - 1); setMenuIdx(i); previewMenuItem(MENU_ITEMS[i].value); return; }
+      if (key.downArrow) { const i = Math.min(MENU_ITEMS.length - 1, menuIdx + 1); setMenuIdx(i); previewMenuItem(MENU_ITEMS[i].value); return; }
       if (key.return)     { selectMenuItem(MENU_ITEMS[menuIdx].value); return; }
       if (key.rightArrow || key.tab) {
         if (screen === 'running') setFocus('output');
@@ -785,8 +818,8 @@ function App({ onDone }: AppProps) {
         return;
       }
       if (input === 'q') { doExit(); return; }
-      if (input === 'j') { setMenuIdx(i => Math.min(MENU_ITEMS.length - 1, i + 1)); return; }
-      if (input === 'k') { setMenuIdx(i => Math.max(0, i - 1)); return; }
+      if (input === 'j') { const i = Math.min(MENU_ITEMS.length - 1, menuIdx + 1); setMenuIdx(i); previewMenuItem(MENU_ITEMS[i].value); return; }
+      if (input === 'k') { const i = Math.max(0, menuIdx - 1); setMenuIdx(i); previewMenuItem(MENU_ITEMS[i].value); return; }
       return;
     }
 
