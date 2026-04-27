@@ -1,3 +1,10 @@
+## [0.11.3](https://github.com/Duducoco/skillstash/compare/v0.11.2...v0.11.3) (2026-04-27)
+
+
+### Bug Fixes
+
+* **tui:** use import.meta.url to resolve entry point path ([21fbbae](https://github.com/Duducoco/skillstash/commit/21fbbae620ee9d3388423f70214764f6cb52b160))
+
 ## [0.11.2](https://github.com/Duducoco/skillstash/compare/v0.11.1...v0.11.2) (2026-04-27)
 
 
