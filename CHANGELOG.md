@@ -1,3 +1,20 @@
+# [0.9.0](https://github.com/Duducoco/skillstash/compare/v0.8.0...v0.9.0) (2026-04-27)
+
+
+### Bug Fixes
+
+* harden core modules against several correctness issues ([0a7d93d](https://github.com/Duducoco/skillstash/commit/0a7d93d231b3601bc777542582373af86feb4293))
+* **hub:** stop purging non-builtin agents on registry load ([e18cff3](https://github.com/Duducoco/skillstash/commit/e18cff319b88768a16f09182bd9adeefcda8a661))
+
+
+### Features
+
+* **agents:** expand builtin agent list to 15 agents and bump to 0.8.1 ([0651530](https://github.com/Duducoco/skillstash/commit/065153066e5b23e897801d5e2aad963e122474c4))
+* launch interactive TUI by default when no subcommand is given (v0.9.0) ([3fba06b](https://github.com/Duducoco/skillstash/commit/3fba06b5db87483a2f769468ab2d12f82be8bad5))
+* **tui:** add terminal-aware pagination to select lists ([1e0f9af](https://github.com/Duducoco/skillstash/commit/1e0f9af889821336c888952543035349fec0660e))
+* **tui:** persistent session with native Ink selections ([8a51d29](https://github.com/Duducoco/skillstash/commit/8a51d293d6a6f94871a637a6d35d0966297d0c34))
+* **tui:** preview right panel on sidebar arrow navigation ([0f6faa1](https://github.com/Duducoco/skillstash/commit/0f6faa1baf3e5c53fa24c68d6ea7358f7c555ef8))
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
