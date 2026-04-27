@@ -22,12 +22,13 @@
     "stash",
     "sync",
     "agent",
-    "workbuddy",
     "codex",
     "claude code",
     "gemini",
     "git",
-    "cli"
+    "cli",
+    "cursor",
+    "code"
   ],
   "author": "Duducoco",
   "license": "MIT",
