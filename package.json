@@ -1,6 +1,6 @@
 {
   "name": "skillstash",
-  "version": "0.11.2",
+  "version": "0.11.3",
   "description": "Git-based skill stash - manage, sync & share agent skills across devices",
   "type": "module",
   "bin": {
