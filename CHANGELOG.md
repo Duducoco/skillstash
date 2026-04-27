@@ -1,3 +1,15 @@
+## [0.11.1](https://github.com/Duducoco/skillstash/compare/v0.11.0...v0.11.1) (2026-04-27)
+
+
+### Bug Fixes
+
+* **tui:** fix sidebar wrap, output scrolling, and layout issues ([3d04f0b](https://github.com/Duducoco/skillstash/commit/3d04f0b27532afb709c8481240ab3b4e0d5403bb))
+
+
+### Performance Improvements
+
+* **tui:** lazy-load command modules to reduce startup time ([ec31941](https://github.com/Duducoco/skillstash/commit/ec31941a1b1d7476b8d3299d1434d9dff731e298))
+
 # [0.9.0](https://github.com/Duducoco/skillstash/compare/v0.8.0...v0.9.0) (2026-04-27)
 
 
