@@ -1,3 +1,10 @@
+## [0.11.2](https://github.com/Duducoco/skillstash/compare/v0.11.1...v0.11.2) (2026-04-27)
+
+
+### Performance Improvements
+
+* **tui:** parallelize agent detection and cache hub reads ([6c7a2f4](https://github.com/Duducoco/skillstash/commit/6c7a2f40125785d3dd29b10fd386774deb1f97ee))
+
 ## [0.11.1](https://github.com/Duducoco/skillstash/compare/v0.11.0...v0.11.1) (2026-04-27)
 
 
