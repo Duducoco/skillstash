@@ -1,3 +1,10 @@
+# [0.12.0](https://github.com/Duducoco/skillstash/compare/v0.11.4...v0.12.0) (2026-04-27)
+
+
+### Features
+
+* **tui:** redesign layout with three-panel bordered interface ([b048e3d](https://github.com/Duducoco/skillstash/commit/b048e3dd98e27324e5bc29975d76bf0cdd87375d))
+
 ## [0.11.4](https://github.com/Duducoco/skillstash/compare/v0.11.3...v0.11.4) (2026-04-27)
 
 
