@@ -16,7 +16,7 @@
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"/>
   </a>
   <a href="https://socket.dev/npm/package/skillstash">
-    <img src="https://badge.socket.dev/npm/package/skillstash/0.11.3" alt="Socket Badge"/>
+    <img src="https://badge.socket.dev/npm/package/skillstash/0.11.4" alt="Socket Badge"/>
   </a>
 </p>
 

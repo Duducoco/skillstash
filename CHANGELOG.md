@@ -1,3 +1,10 @@
+## [0.11.4](https://github.com/Duducoco/skillstash/compare/v0.11.3...v0.11.4) (2026-04-27)
+
+
+### Bug Fixes
+
+* **git:** retry push with fetch+merge when remote has diverged history ([5fefea4](https://github.com/Duducoco/skillstash/commit/5fefea4252c7d5e9759ac48f9e194e911d151fe5))
+
 ## [0.11.3](https://github.com/Duducoco/skillstash/compare/v0.11.2...v0.11.3) (2026-04-27)
 
 
