@@ -3,6 +3,7 @@ import { render, Box, Text, useInput, useApp } from 'ink';
 import * as os from 'node:os';
 import * as child_process from 'node:child_process';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { t, getLocale, setLocale, type Locale } from '../i18n/index.js';
 import {
   loadRegistry,
@@ -16,6 +17,12 @@ import {
   invalidateHubCache,
 } from '../core/hub.js';
 import { AgentConfig, setAgentEnabled, addAgentToRegistry } from '../core/registry.js';
+
+// Resolve the absolute path to dist/index.js regardless of how the binary was
+// invoked (global npm install creates a bin shim where process.argv[1] points
+// to the shim, not to this package's dist directory).
+const __tuiDir = path.dirname(fileURLToPath(import.meta.url));
+const ENTRY_POINT = path.resolve(__tuiDir, '..', 'index.js');
 
 // ── Layout constants ───────────────────────────────────────────────────────────
 
@@ -606,7 +613,7 @@ function App({ onDone }: AppProps) {
 
     const child = child_process.spawn(
       process.execPath,
-      [path.join(path.dirname(process.argv[1] || ''), 'index.js'), ...args],
+      [ENTRY_POINT, ...args],
       { stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '1', NO_TTY: '1' } },
     );
     childRef.current = child;
