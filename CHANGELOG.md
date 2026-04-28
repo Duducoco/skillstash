@@ -1,3 +1,10 @@
+# [0.13.0](https://github.com/Duducoco/skillstash/compare/v0.12.0...v0.13.0) (2026-04-28)
+
+
+### Features
+
+* **tui:** add exit confirmation dialog and nested Esc navigation ([857eef9](https://github.com/Duducoco/skillstash/commit/857eef9dfbb18d3a8f8caa4cacd90f5733b8dda2))
+
 # [0.12.0](https://github.com/Duducoco/skillstash/compare/v0.11.4...v0.12.0) (2026-04-27)
 
 
