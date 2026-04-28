@@ -816,6 +816,14 @@ function App({ onDone }: AppProps) {
   // ── Exit ──────────────────────────────────────────────────────────────────────
   const doExit = useCallback(() => { exit(); onDone(null); }, [exit, onDone]);
 
+  const confirmExit = useCallback(() => {
+    setConfirmMessage(zh ? '确认退出 skillstash？' : 'Exit skillstash?');
+    setConfirmCursor(0);
+    setConfirmAction(() => doExit);
+    setScreen('confirm-modal');
+    setFocus('content');
+  }, [zh, doExit]);
+
   // ── Preview sidebar item → update right panel without changing focus ─────────
   const previewMenuItem = useCallback((choice: MainChoice) => {
     if (choice === 'exit' || choice === 'home') { setScreen('home'); return; }
@@ -851,7 +859,7 @@ function App({ onDone }: AppProps) {
 
   // ── Navigate sidebar → screen ────────────────────────────────────────────────
   const selectMenuItem = useCallback((choice: MainChoice) => {
-    if (choice === 'exit')  { doExit(); return; }
+    if (choice === 'exit')  { confirmExit(); return; }
     if (choice === 'home')  { setScreen('home'); setFocus('sidebar'); setSession('idle'); return; }
 
     setTextValue('');
@@ -869,7 +877,7 @@ function App({ onDone }: AppProps) {
     if (choice === 'agents')   { setAgentsSubIdx(1); setScreen('agents-sub'); setFocus('content'); }
     if (choice === 'assign')   { enterAssignPickAgent(); }
     if (choice === 'language') { setLangCursor(getLocale() === 'zh' ? 1 : 0); setScreen('language-pick'); setFocus('content'); }
-  }, [doExit, execSimple, enterRemovePick, enterAssignPickAgent]);
+  }, [confirmExit, execSimple, enterRemovePick, enterAssignPickAgent]);
 
   // ── Input handler ─────────────────────────────────────────────────────────────
   useInput((input, key) => {
@@ -908,7 +916,8 @@ function App({ onDone }: AppProps) {
         else setFocus('content');
         return;
       }
-      if (input === 'q') { doExit(); return; }
+      if (key.escape) { confirmExit(); return; }
+      if (input === 'q') { confirmExit(); return; }
       if (input === 'j') { const i = Math.min(MENU_ITEMS.length - 1, menuIdx + 1); setMenuIdx(i); previewMenuItem(MENU_ITEMS[i].value); return; }
       if (input === 'k') { const i = Math.max(0, menuIdx - 1); setMenuIdx(i); previewMenuItem(MENU_ITEMS[i].value); return; }
       return;
@@ -944,6 +953,14 @@ function App({ onDone }: AppProps) {
         setAgentsAddStep('name');
         setTextValue(agentsAddName);
         return;
+      }
+      // Nested screens: Esc returns to the parent screen instead of sidebar
+      const agentsSubScreens: Screen[] = ['agents-select', 'agents-enable', 'agents-disable', 'agents-add', 'agents-remove'];
+      if (agentsSubScreens.includes(screen)) {
+        setScreen('agents-sub'); setFocus('content'); return;
+      }
+      if (screen === 'assign-pick-skills') {
+        setScreen('assign-pick-agent'); setFocus('content'); return;
       }
       setFocus('sidebar'); setSession('idle'); previewMenuItem(MENU_ITEMS[menuIdx].value); return;
     }
