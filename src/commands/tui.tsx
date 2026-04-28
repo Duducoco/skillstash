@@ -865,6 +865,7 @@ function App({ onDone }: AppProps) {
     setTextValue('');
     setAgentsAddStep('name');
     setAgentsAddName('');
+    setSession('idle');
 
     const simpleCmds: MainChoice[] = ['sync', 'link', 'diff', 'import'];
     if (simpleCmds.includes(choice)) { execSimple([choice]); return; }
@@ -925,7 +926,7 @@ function App({ onDone }: AppProps) {
 
     // ── Output focus ──────────────────────────────────────────────────────────
     if (focus === 'output') {
-      if (key.escape || key.leftArrow) { setFocus('sidebar'); return; }
+      if (key.escape || key.leftArrow) { setFocus('sidebar'); setSession('idle'); return; }
       if (key.tab) { setFocus('content'); return; }
       if (key.upArrow) {
         setOutputScroll(s => Math.max(0, s - 1));
