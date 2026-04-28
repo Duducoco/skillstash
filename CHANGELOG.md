@@ -1,3 +1,10 @@
+## [0.13.1](https://github.com/Duducoco/skillstash/compare/v0.13.0...v0.13.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* **tui:** reset session when leaving output panel or re-entering menu screen ([a2545d1](https://github.com/Duducoco/skillstash/commit/a2545d1d5c2ff34ea1b709b0481e008a01e39aa8))
+
 # [0.13.0](https://github.com/Duducoco/skillstash/compare/v0.12.0...v0.13.0) (2026-04-28)
 
 
