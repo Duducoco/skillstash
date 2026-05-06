@@ -1,3 +1,10 @@
+## [0.14.2](https://github.com/Duducoco/skillstash/compare/v0.14.1...v0.14.2) (2026-05-06)
+
+
+### Bug Fixes
+
+* replace execSync with execFileSync for git commit commands ([80e716b](https://github.com/Duducoco/skillstash/commit/80e716b65ede3dad2e39aca8ce416bf6711598da))
+
 ## [0.14.1](https://github.com/Duducoco/skillstash/compare/v0.14.0...v0.14.1) (2026-05-06)
 
 
