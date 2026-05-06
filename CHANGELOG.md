@@ -1,3 +1,10 @@
+# [0.16.0](https://github.com/Duducoco/skillstash/compare/v0.15.1...v0.16.0) (2026-05-06)
+
+
+### Features
+
+* **agents:** add WorkBuddy agent support ([7989a6c](https://github.com/Duducoco/skillstash/commit/7989a6c4c0dff2d966ada3ad06b01ada90beea6c))
+
 ## [0.15.1](https://github.com/Duducoco/skillstash/compare/v0.15.0...v0.15.1) (2026-05-06)
 
 
