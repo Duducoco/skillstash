@@ -15,6 +15,7 @@ const BUILTIN_NAMES = [
   'claude', 'codex', 'gemini', 'cursor', 'kilocode',
   'trae', 'qoder', 'codebuddy', 'kimi', 'openclaw',
   'agents', 'opencode', 'antigravity', 'codes', 'iflow',
+  'deepseek',
 ];
 
 afterEach(() => {
@@ -52,9 +53,9 @@ describe('isBuiltinAgent', () => {
 });
 
 describe('getAgentDefinitions', () => {
-  it('returns all 15 builtin agents by default', () => {
+  it('returns all 16 builtin agents by default', () => {
     const defs = getAgentDefinitions();
-    expect(defs.length).toBe(15);
+    expect(defs.length).toBe(16);
     for (const name of BUILTIN_NAMES) {
       expect(defs.some((d) => d.name === name)).toBe(true);
     }
@@ -63,7 +64,7 @@ describe('getAgentDefinitions', () => {
   it('returns builtins + custom agents after registration', () => {
     registerAgent({ name: 'my-agent', skillsPath: '/tmp/my-agent/skills', linkType: 'copy' });
     const defs = getAgentDefinitions();
-    expect(defs.length).toBe(16);
+    expect(defs.length).toBe(17);
     expect(defs.some((d) => d.name === 'my-agent')).toBe(true);
   });
 });
@@ -135,9 +136,9 @@ describe('resetCustomAgents', () => {
   it('clears all custom agents leaving only builtins', () => {
     registerAgent({ name: 'a', skillsPath: '/tmp/a', linkType: 'copy' });
     registerAgent({ name: 'b', skillsPath: '/tmp/b', linkType: 'copy' });
-    expect(getAgentDefinitions().length).toBe(17);
+    expect(getAgentDefinitions().length).toBe(18);
     resetCustomAgents();
-    expect(getAgentDefinitions().length).toBe(15);
+    expect(getAgentDefinitions().length).toBe(16);
     expect(getAgentDefinitions().every((d) => BUILTIN_NAMES.includes(d.name))).toBe(true);
   });
 });

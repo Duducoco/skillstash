@@ -334,6 +334,7 @@ skillstash assign --agent claude
 | AntiGravity | `~/.gemini/antigravity/skills/` | ✅ |
 | Codes CLI | `~/.codes/skills/` | ✅ |
 | iFlow CLI | `~/.iflow/skills/` | ✅ |
+| DeepSeek TUI | `~/.deepseek/skills/` | ✅ |
 
 所有 Agent 均自动检测，可通过 `skillstash init` 或 `skillstash agents select` 选择要管理的 Agent。禁用的 Agent 仍会被检测到，但在 `link` 和 `sync` 时会被跳过。
 

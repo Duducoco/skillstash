@@ -337,6 +337,7 @@ Both machines share the same hub and sync the same skill files. Only the assignm
 | AntiGravity | `~/.gemini/antigravity/skills/` | ✅ |
 | Codes CLI | `~/.codes/skills/` | ✅ |
 | iFlow CLI | `~/.iflow/skills/` | ✅ |
+| DeepSeek TUI | `~/.deepseek/skills/` | ✅ |
 
 All agents are auto-detected, but you can choose which ones to manage via `skillstash init` or `skillstash agents select`. Disabled agents are still detected but skipped during `link` and `sync`.
 

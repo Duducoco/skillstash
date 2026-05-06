@@ -22,6 +22,7 @@ const builtinAgents: AgentDefinition[] = [
   { name: 'antigravity', skillsPath: '{home}/.gemini/antigravity/skills',  linkType: 'copy' },
   { name: 'codes',       skillsPath: '{home}/.codes/skills',               linkType: 'copy' },
   { name: 'iflow',       skillsPath: '{home}/.iflow/skills',               linkType: 'copy' },
+  { name: 'deepseek',    skillsPath: '{home}/.deepseek/skills',            linkType: 'copy' },
 ];
 
 const customAgents: AgentDefinition[] = [];

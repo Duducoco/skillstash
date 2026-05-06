@@ -242,8 +242,8 @@ export function detectAgents(): AgentConfig[] {
 }
 
 /**
- * Async variant: checks all 15 agent directories in parallel via fs.promises.access
- * instead of 15 sequential fs.existsSync calls — dramatically faster on cold/network drives.
+ * Async variant: checks all 16 agent directories in parallel via fs.promises.access
+ * instead of 16 sequential fs.existsSync calls — dramatically faster on cold/network drives.
  */
 export async function detectAgentsAsync(): Promise<AgentConfig[]> {
   const defs = getAgentDefinitions();

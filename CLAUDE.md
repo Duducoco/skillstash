@@ -69,6 +69,7 @@ Key command flows:
 | AntiGravity | `antigravity` | `~/.gemini/antigravity/skills` |
 | Codes CLI | `codes` | `~/.codes/skills` |
 | iFlow CLI | `iflow` | `~/.iflow/skills` |
+| DeepSeek TUI | `deepseek` | `~/.deepseek/skills` |
 
 ### Key design notes
 
