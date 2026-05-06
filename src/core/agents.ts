@@ -23,6 +23,7 @@ const builtinAgents: AgentDefinition[] = [
   { name: 'codes',       skillsPath: '{home}/.codes/skills',               linkType: 'copy' },
   { name: 'iflow',       skillsPath: '{home}/.iflow/skills',               linkType: 'copy' },
   { name: 'deepseek',    skillsPath: '{home}/.deepseek/skills',            linkType: 'copy' },
+  { name: 'workbuddy',   skillsPath: '{home}/.workbuddy/skills',           linkType: 'copy' },
 ];
 
 const customAgents: AgentDefinition[] = [];

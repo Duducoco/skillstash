@@ -70,6 +70,7 @@ Key command flows:
 | Codes CLI | `codes` | `~/.codes/skills` |
 | iFlow CLI | `iflow` | `~/.iflow/skills` |
 | DeepSeek TUI | `deepseek` | `~/.deepseek/skills` |
+| WorkBuddy | `workbuddy` | `~/.workbuddy/skills` |
 
 ### Key design notes
 
