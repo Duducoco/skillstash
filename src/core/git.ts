@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { logger } from '../utils/logger.js';
+import { removeDir } from '../utils/fs.js';
 
 /**
  * Check if git is available
@@ -187,6 +188,32 @@ function ensureGitUser(hubPath: string): void {
 }
 
 /**
+ * Clean up any nested .git directories under skills/ to prevent them
+ * from being committed as submodules. This is a safety net for manual
+ * placement and other edge cases not caught by copyDirRecursive.
+ */
+function removeNestedGitDirs(hubPath: string): void {
+  const skillsDir = path.join(hubPath, 'skills');
+  if (!fs.existsSync(skillsDir)) return;
+
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(skillsDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const nestedGit = path.join(skillsDir, entry.name, '.git');
+    if (fs.existsSync(nestedGit)) {
+      logger.info(`Removing nested .git from skill "${entry.name}" to prevent submodule pollution`);
+      removeDir(nestedGit);
+    }
+  }
+}
+
+/**
  * Stage and commit all changes
  */
 export function gitCommit(hubPath: string, message: string): boolean {
@@ -194,6 +221,7 @@ export function gitCommit(hubPath: string, message: string): boolean {
 
   try {
     ensureGitUser(hubPath);
+    removeNestedGitDirs(hubPath);
     execSync('git add -A', { cwd: hubPath, stdio: 'pipe', timeout: 30_000 });
     // Check if there's anything to commit
     try {
@@ -374,6 +402,7 @@ export function gitCommitMerge(hubPath: string, message: string): boolean {
   if (!gitAvailable()) return false;
   try {
     ensureGitUser(hubPath);
+    removeNestedGitDirs(hubPath);
     execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, {
       cwd: hubPath,
       stdio: 'pipe',
