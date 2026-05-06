@@ -4,7 +4,11 @@ import * as os from 'node:os';
 import * as child_process from 'node:child_process';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { t, getLocale, setLocale, type Locale } from '../i18n/index.js';
+
+const require = createRequire(import.meta.url);
+const { version: VERSION } = require('../../package.json') as { version: string };
 import {
   loadRegistry,
   saveRegistry,
@@ -246,6 +250,11 @@ function HomeContent({ hubInfo, loading }: { hubInfo: HubInfo; loading: boolean 
           <Box width={12}><Text color="gray">{zh ? '技能' : 'Skills'}</Text></Box>
           <Text color="gray">  :  </Text>
           <Text color="white">{loading ? '...' : hubInfo.skillCount}</Text>
+        </Box>
+        <Box>
+          <Box width={12}><Text color="gray">{zh ? '版本' : 'Version'}</Text></Box>
+          <Text color="gray">  :  </Text>
+          <Text color="cyan">{VERSION}</Text>
         </Box>
       </Box>
 
