@@ -1,3 +1,10 @@
+# [0.14.0](https://github.com/Duducoco/skillstash/compare/v0.13.1...v0.14.0) (2026-05-06)
+
+
+### Features
+
+* **agents:** add DeepSeek TUI agent support ([3274c4f](https://github.com/Duducoco/skillstash/commit/3274c4f0361fc6620abe3774b8d805e6836d1e88))
+
 ## [0.13.1](https://github.com/Duducoco/skillstash/compare/v0.13.0...v0.13.1) (2026-04-28)
 
 
