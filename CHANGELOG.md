@@ -1,3 +1,15 @@
+# [0.15.0](https://github.com/Duducoco/skillstash/compare/v0.14.2...v0.15.0) (2026-05-06)
+
+
+### Bug Fixes
+
+* **tui:** add explicit width and flexShrink constraints to layout panels ([26b0572](https://github.com/Duducoco/skillstash/commit/26b057273ff269bb7a9f6fbd3cb74b75406bb8db))
+
+
+### Features
+
+* **tui:** display version in home screen hub status section ([e00aade](https://github.com/Duducoco/skillstash/commit/e00aadede97c8781bd69ba4dff2a43052453c466))
+
 ## [0.14.2](https://github.com/Duducoco/skillstash/compare/v0.14.1...v0.14.2) (2026-05-06)
 
 
