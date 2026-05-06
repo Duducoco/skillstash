@@ -1,3 +1,10 @@
+## [0.14.1](https://github.com/Duducoco/skillstash/compare/v0.14.0...v0.14.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* reject skill directories without SKILL.md at all hub entry points ([2943996](https://github.com/Duducoco/skillstash/commit/29439965502bed1d52757ab0450d41d58e159727))
+
 # [0.14.0](https://github.com/Duducoco/skillstash/compare/v0.13.1...v0.14.0) (2026-05-06)
 
 
