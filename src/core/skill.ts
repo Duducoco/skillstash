@@ -46,6 +46,15 @@ export function parseFrontmatter(content: string): SkillFrontmatter | null {
 }
 
 /**
+ * Check if a directory is a valid skill directory (contains SKILL.md).
+ * This is the canonical guard for all hub entry points.
+ */
+export function isValidSkillDir(skillDir: string): boolean {
+  const skillMdPath = path.join(skillDir, 'SKILL.md');
+  return fs.existsSync(skillMdPath);
+}
+
+/**
  * Read and parse SKILL.md
  */
 export function readSkillMeta(skillDir: string): { frontmatter: SkillFrontmatter | null; content: string } | null {

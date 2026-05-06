@@ -9,6 +9,7 @@ import {
 } from '../core/git.js';
 import { copyDirRecursive, ensureDir, exists, removeDir, hashDir, readJson, writeJson } from '../utils/fs.js';
 import { updateSkillInRegistry, removeSkillFromRegistry } from '../core/registry.js';
+import { isValidSkillDir } from '../core/skill.js';
 import { mergeSharedRegistries } from '../core/merge.js';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
@@ -163,7 +164,7 @@ export function registerSyncCommand(program: Command): void {
       // Check for skills on disk not in registry
       if (exists(skillsDir)) {
         const onDisk = fs.readdirSync(skillsDir, { withFileTypes: true })
-          .filter((d) => d.isDirectory())
+          .filter((d) => d.isDirectory() && isValidSkillDir(path.join(skillsDir, d.name)))
           .map((d) => d.name);
 
         for (const name of onDisk) {

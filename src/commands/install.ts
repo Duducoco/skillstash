@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import { hubExists, getSkillsPath, loadRegistry, saveRegistry, getDefaultHubPath } from '../core/hub.js';
 import { addSkillToRegistry, updateSkillInRegistry } from '../core/registry.js';
 import { copyDirRecursive, hashDir, exists, removeDir } from '../utils/fs.js';
-import { getSkillName, getSkillVersion, getSkillDescription, lintSkill } from '../core/skill.js';
+import { getSkillName, getSkillVersion, getSkillDescription, lintSkill, isValidSkillDir } from '../core/skill.js';
 import { gitCommit, gitShallowClone, gitAvailable, type GitCloneResult } from '../core/git.js';
 import { logger } from '../utils/logger.js';
 import { t } from '../i18n/index.js';
@@ -289,7 +289,12 @@ export async function installFromPath(
   overrideName?: string,
   sourceUrl?: string,
 ): Promise<void> {
-  // Validate skill
+  // Validate skill — SKILL.md must exist
+  if (!isValidSkillDir(skillDir)) {
+    logger.error(t('install.noSkillMdAtPath', { path: skillDir }));
+    return;
+  }
+
   if (options.lint) {
     const lintResult = lintSkill(skillDir);
     if (!lintResult.valid) {

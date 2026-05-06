@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { hubExists, getSkillsPath, loadRegistry, saveRegistry, getDefaultHubPath } from '../core/hub.js';
 import { copyDirRecursive, removeDir, ensureDir, exists } from '../utils/fs.js';
 import { updateSkillInRegistry } from '../core/registry.js';
+import { isValidSkillDir } from '../core/skill.js';
 import { gitCommit } from '../core/git.js';
 import { logger } from '../utils/logger.js';
 import { t } from '../i18n/index.js';
@@ -67,6 +68,11 @@ export function registerLinkCommand(program: Command): void {
 
           if (!exists(srcDir)) {
             logger.warn(t('link.skillSourceMissing', { skill: skillName }));
+            continue;
+          }
+
+          if (!isValidSkillDir(srcDir)) {
+            logger.warn(`  ! ${skillName}: ${t('install.noSkillMdAtPath', { path: srcDir })}`);
             continue;
           }
 

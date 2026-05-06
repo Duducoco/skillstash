@@ -10,6 +10,7 @@ import {
 } from './registry.js';
 import { ensureDir, readJson, writeJson, exists } from '../utils/fs.js';
 import { AgentDefinition, registerAgent, getAgentDefinitions, resolveSkillsPath, isBuiltinAgent } from './agents.js';
+import { isValidSkillDir } from './skill.js';
 import { withLock } from '../utils/lock.js';
 
 // ── Per-process in-memory cache ───────────────────────────────────────────────
@@ -263,6 +264,6 @@ export function listHubSkills(hubPath?: string): string[] {
   if (!exists(sp)) return [];
   return fs
     .readdirSync(sp, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
+    .filter((d) => d.isDirectory() && isValidSkillDir(path.join(sp, d.name)))
     .map((d) => d.name);
 }

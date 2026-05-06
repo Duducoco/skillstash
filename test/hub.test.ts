@@ -342,7 +342,9 @@ describe('listHubSkills', () => {
     initHub(hubDir);
     const skillsDir = path.join(hubDir, 'skills');
     fs.mkdirSync(path.join(skillsDir, 'finance-ops'));
+    fs.writeFileSync(path.join(skillsDir, 'finance-ops', 'SKILL.md'), '---\nname: finance-ops\n---\n', 'utf-8');
     fs.mkdirSync(path.join(skillsDir, 'anti-distill'));
+    fs.writeFileSync(path.join(skillsDir, 'anti-distill', 'SKILL.md'), '---\nname: anti-distill\n---\n', 'utf-8');
 
     const skills = listHubSkills(hubDir);
     expect(skills).toContain('finance-ops');
@@ -353,6 +355,7 @@ describe('listHubSkills', () => {
     initHub(hubDir);
     const skillsDir = path.join(hubDir, 'skills');
     fs.mkdirSync(path.join(skillsDir, 'real-skill'));
+    fs.writeFileSync(path.join(skillsDir, 'real-skill', 'SKILL.md'), '---\nname: real-skill\n---\n', 'utf-8');
     fs.writeFileSync(path.join(skillsDir, 'not-a-skill.txt'), 'data', 'utf-8');
 
     const skills = listHubSkills(hubDir);
