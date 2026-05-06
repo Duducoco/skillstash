@@ -4,6 +4,7 @@ import { registerLocale } from './index.js';
 export const en: Messages = {
   common: {
     hubNotInitialized: 'Skills hub not initialized. Run `skillstash init` first.',
+    hubNotInitializedWithHint: 'Skills hub not initialized. Run `skillstash init` to create one, or `skillstash init <url>` to clone a remote hub.',
     hubNotInitializedWithUrl: 'Skills hub not initialized. Run `skillstash init` first.',
     agentNotInRegistry: 'Agent "{name}" not found in registry.',
     availableAgents: 'Available agents: {list}',
@@ -72,6 +73,7 @@ export const en: Messages = {
   },
   sync: {
     unresolvedConflicts: 'Hub has unresolved merge conflicts. Resolve manually:\n  cd "{path}" && git merge --abort',
+    unresolvedConflictsHelp: 'After aborting the merge with `git merge --abort`, run `skillstash sync` to retry.',
     autoCommitting: 'Uncommitted local changes detected, auto-committing...',
     fetchingRemote: 'Fetching remote updates...',
     fetchFailed: 'Git fetch failed, continuing with local state',
@@ -256,6 +258,9 @@ export const en: Messages = {
     neverSynced: 'Never',
     fieldRequired: 'This field is required.',
     inputHint: 'Enter to confirm   Esc to go back',
+  },
+  git: {
+    nestedGitRemoved: 'Removed nested .git from skill "{name}" to prevent submodule pollution',
   },
   merge: {
     localNewer: 'local version is newer',

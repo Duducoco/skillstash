@@ -649,6 +649,7 @@ function App({ onDone }: AppProps) {
       } else {
         setSession('error');
         setStatus(zh ? `✖ ${args[0]} 失败 (code ${code})` : `✖ ${args[0]} failed (code ${code})`, 'error');
+        setFocus('output'); // auto-focus output on error so user sees what went wrong
       }
       refreshHub();
       setOutputScroll(0);

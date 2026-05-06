@@ -1,6 +1,7 @@
 export interface Messages {
   common: {
     hubNotInitialized: string;
+    hubNotInitializedWithHint: string;
     hubNotInitializedWithUrl: string;
     agentNotInRegistry: string;
     availableAgents: string;
@@ -69,6 +70,7 @@ export interface Messages {
   };
   sync: {
     unresolvedConflicts: string;
+    unresolvedConflictsHelp: string;
     autoCommitting: string;
     fetchingRemote: string;
     fetchFailed: string;
@@ -253,6 +255,9 @@ export interface Messages {
     neverSynced: string;
     fieldRequired: string;
     inputHint: string;
+  };
+  git: {
+    nestedGitRemoved: string;
   };
   merge: {
     localNewer: string;

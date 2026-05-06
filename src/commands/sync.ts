@@ -35,11 +35,12 @@ export function registerSyncCommand(program: Command): void {
 
       const registry = loadRegistry(hubPath);
 
-      // Step 1: Git pull (fetch + smart merge)
+      // Step 1/4: Git pull (fetch + smart merge)
       if (options.pull && hasRemote(hubPath)) {
         // Abort if repo is already stuck in a MERGING state
         if (gitIsInMergeState(hubPath)) {
           logger.error(t('sync.unresolvedConflicts', { path: hubPath }));
+          logger.info(t('sync.unresolvedConflictsHelp'));
           return;
         }
 
@@ -132,7 +133,7 @@ export function registerSyncCommand(program: Command): void {
         logger.info(t('sync.noRemote'));
       }
 
-      // Step 2: Verify hub integrity
+      // Step 2/4: Verify hub integrity
       logger.step(t('sync.verifyingIntegrity'));
       const skillsDir = getSkillsPath(hubPath);
       const skillNames = Object.keys(registry.skills);
@@ -196,7 +197,7 @@ export function registerSyncCommand(program: Command): void {
         logger.success(t('sync.integrityOk'));
       }
 
-      // Step 3: Link to agents
+      // Step 3/4: Link to agents
       if (options.link) {
         const agents = Object.values(registry.agents).filter((a) => a.available && a.enabled);
         const enabledSkills = currentSkillNames.filter(
@@ -263,7 +264,7 @@ export function registerSyncCommand(program: Command): void {
         }
       }
 
-      // Step 4: Git push
+      // Step 4/4: Git push
       if (options.push && hasRemote(hubPath)) {
         startSpinner(t('common.pushing'));
         if (gitPush(hubPath)) {

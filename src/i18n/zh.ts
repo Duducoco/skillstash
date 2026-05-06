@@ -4,6 +4,7 @@ import { registerLocale } from './index.js';
 export const zh: Messages = {
   common: {
     hubNotInitialized: '技能库未初始化，请先运行 `skillstash init`。',
+    hubNotInitializedWithHint: '技能库未初始化。运行 `skillstash init` 创建，或 `skillstash init <url>` 克隆远程仓库。',
     hubNotInitializedWithUrl: '技能库未初始化，请先运行 `skillstash init`。',
     agentNotInRegistry: '注册表中未找到 Agent "{name}"。',
     availableAgents: '可用 Agent：{list}',
@@ -72,6 +73,7 @@ export const zh: Messages = {
   },
   sync: {
     unresolvedConflicts: '技能库存在未解决的合并冲突，请手动处理：\n  cd "{path}" && git merge --abort',
+    unresolvedConflictsHelp: '运行 `git merge --abort` 中止合并后，再运行 `skillstash sync` 重试。',
     autoCommitting: '检测到未提交的本地变更，正在自动提交...',
     fetchingRemote: '正在获取远程更新...',
     fetchFailed: 'Git 拉取失败，继续使用本地状态',
@@ -256,6 +258,9 @@ export const zh: Messages = {
     neverSynced: '从未同步',
     fieldRequired: '此字段为必填项。',
     inputHint: '回车确认   Esc 返回',
+  },
+  git: {
+    nestedGitRemoved: '已从技能 "{name}" 中移除嵌套 .git 目录，防止子模块污染',
   },
   merge: {
     localNewer: '本地版本更新',

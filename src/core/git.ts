@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { logger } from '../utils/logger.js';
 import { removeDir } from '../utils/fs.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Check if git is available
@@ -176,14 +177,14 @@ export function gitPushSetUpstream(hubPath: string, branch: string = 'main'): bo
  */
 function ensureGitUser(hubPath: string): void {
   try {
-    execSync('git config user.name', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
+    execFileSync('git', ['config', 'user.name'], { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   } catch {
-    execSync('git config user.name "skillstash"', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
+    execFileSync('git', ['config', 'user.name', 'skillstash'], { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   }
   try {
-    execSync('git config user.email', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
+    execFileSync('git', ['config', 'user.email'], { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   } catch {
-    execSync('git config user.email "skillstash@local"', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
+    execFileSync('git', ['config', 'user.email', 'skillstash@local'], { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
   }
 }
 
@@ -207,7 +208,7 @@ function removeNestedGitDirs(hubPath: string): void {
     if (!entry.isDirectory()) continue;
     const nestedGit = path.join(skillsDir, entry.name, '.git');
     if (fs.existsSync(nestedGit)) {
-      logger.info(`Removing nested .git from skill "${entry.name}" to prevent submodule pollution`);
+      logger.info(t('git.nestedGitRemoved', { name: entry.name }));
       removeDir(nestedGit);
     }
   }
@@ -222,15 +223,15 @@ export function gitCommit(hubPath: string, message: string): boolean {
   try {
     ensureGitUser(hubPath);
     removeNestedGitDirs(hubPath);
-    execSync('git add -A', { cwd: hubPath, stdio: 'pipe', timeout: 30_000 });
+    execFileSync('git', ['add', '-A'], { cwd: hubPath, stdio: 'pipe', timeout: 30_000 });
     // Check if there's anything to commit
     try {
-      execSync('git diff --cached --quiet', { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
+      execFileSync('git', ['diff', '--cached', '--quiet'], { cwd: hubPath, stdio: 'pipe', timeout: 10_000 });
       return true; // nothing to commit
     } catch {
       // there are changes
     }
-    execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, {
+    execFileSync('git', ['commit', '-m', message], {
       cwd: hubPath,
       stdio: 'pipe',
       timeout: 30_000,
@@ -403,7 +404,7 @@ export function gitCommitMerge(hubPath: string, message: string): boolean {
   try {
     ensureGitUser(hubPath);
     removeNestedGitDirs(hubPath);
-    execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, {
+    execFileSync('git', ['commit', '-m', message], {
       cwd: hubPath,
       stdio: 'pipe',
       timeout: 30_000,
