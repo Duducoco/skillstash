@@ -228,7 +228,7 @@ function HomeContent({ hubInfo, loading }: { hubInfo: HubInfo; loading: boolean 
   }
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" width="100%">
       <SectionHeader title={zh ? 'Hub 状态' : 'Hub Status'} />
       <Box flexDirection="column" marginLeft={2} marginTop={1}>
         <Box>
@@ -255,22 +255,29 @@ function HomeContent({ hubInfo, loading }: { hubInfo: HubInfo; loading: boolean 
           <Text color="gray" dimColor>{zh ? '正在检测...' : 'Detecting...'}</Text>
         ) : agentRows.map((row, ri) => (
           <Box key={ri} flexDirection="row" marginBottom={0}>
-            {row.map((a) => (
-              <Box key={a.name} marginRight={4}>
-                <Text color="blue" dimColor>{'>_ '}</Text>
-                <Box width={14}><Text color={a.available ? 'white' : 'gray'} bold={a.available}>{a.name}</Text></Box>
-                <Text color={a.available ? (a.enabled ? 'green' : 'gray') : 'gray'}>
-                  {a.available ? (a.enabled ? '✓' : '○') : '✗'}
-                </Text>
-              </Box>
-            ))}
+            {Array.from({ length: 3 }).map((_, ci) => {
+              const a = row[ci];
+              return (
+                <Box key={ci} width={22} marginRight={4} flexShrink={0}>
+                  {a ? (
+                    <>
+                      <Text color="blue" dimColor>{'>_ '}</Text>
+                      <Box width={14}><Text color={a.available ? 'white' : 'gray'} bold={a.available}>{a.name}</Text></Box>
+                      <Text color={a.available ? (a.enabled ? 'green' : 'gray') : 'gray'}>
+                        {a.available ? (a.enabled ? '✓' : '○') : '✗'}
+                      </Text>
+                    </>
+                  ) : null}
+                </Box>
+              );
+            })}
           </Box>
         ))}
       </Box>
 
       <Box flexDirection="column" marginTop={2}>
         {ASCII_LOGO.map((line, i) => (
-          <Text key={i} color="gray" dimColor>{line}</Text>
+          <Text key={i} color="gray" dimColor wrap="truncate">{line}</Text>
         ))}
       </Box>
 
@@ -1124,7 +1131,7 @@ function App({ onDone }: AppProps) {
 
   // Full-height vertical border column
   const vbar = (color: string) => (
-    <Box flexDirection="column">
+    <Box flexDirection="column" flexShrink={0}>
       {Array.from({length: bodyHeight}, (_, i) => <Text key={i} color={color}>│</Text>)}
     </Box>
   );
@@ -1316,13 +1323,13 @@ function App({ onDone }: AppProps) {
       {topBorder}
 
       {/* ── Main body (3 panels, shared borders) ───────────────────────────── */}
-      <Box flexDirection="row" height={bodyHeight}>
+      <Box flexDirection="row" height={bodyHeight} width={termCols}>
 
         {/* Left border │ */}
         {vbar(sideBC)}
 
         {/* Sidebar */}
-        <Box flexDirection="column" width={SIDEBAR_W + 2} paddingX={1}>
+        <Box flexDirection="column" width={SIDEBAR_W + 2} flexShrink={0} paddingX={1}>
           <Box marginBottom={1}>
             <Text bold color={focus === 'sidebar' ? 'cyan' : 'gray'}>{zh ? '菜单' : 'Menu'}</Text>
           </Box>
@@ -1353,7 +1360,7 @@ function App({ onDone }: AppProps) {
         {vbar(contBC)}
 
         {/* Content */}
-        <Box flexDirection="column" flexGrow={1} paddingX={1}>
+        <Box flexDirection="column" width={CONT_BORDER_W} flexShrink={0} paddingX={1}>
           <Box flexDirection="row" marginBottom={1}>
             <Text bold color={focus === 'content' ? 'cyan' : 'white'}>{`${curItem.emoji}  ${label(curItem)}`}</Text>
           </Box>
@@ -1364,7 +1371,7 @@ function App({ onDone }: AppProps) {
         {vbar(outBC)}
 
         {/* Output */}
-        <Box flexDirection="column" width={OUTPUT_FULL - 2} paddingX={1}>
+        <Box flexDirection="column" width={OUTPUT_FULL - 2} flexShrink={0} paddingX={1}>
           <Box marginBottom={1}>
             <Text bold color={focus === 'output' ? 'cyan' : 'gray'}>{zh ? '输出' : 'Output'}</Text>
           </Box>
