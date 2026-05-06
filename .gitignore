@@ -7,3 +7,6 @@ coverage/
 .claude
 .spec-workflow
 NEXT.md
+.agents/
+.deepseek/
+AGENTS.md
