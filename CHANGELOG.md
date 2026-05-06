@@ -1,3 +1,10 @@
+## [0.15.1](https://github.com/Duducoco/skillstash/compare/v0.15.0...v0.15.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* **diff:** exclude disabled agents from diff output ([07db1b2](https://github.com/Duducoco/skillstash/commit/07db1b26b5ffa2786d01769a91c1072d83ab5fd0))
+
 # [0.15.0](https://github.com/Duducoco/skillstash/compare/v0.14.2...v0.15.0) (2026-05-06)
 
 
