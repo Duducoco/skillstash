@@ -18,6 +18,7 @@ export function copyDirRecursive(src: string, dest: string): void {
     const destPath = path.join(dest, entry.name);
 
     if (entry.isDirectory()) {
+      if (entry.name === '.git') continue; // never copy nested git repositories
       copyDirRecursive(srcPath, destPath);
     } else {
       fs.copyFileSync(srcPath, destPath);
