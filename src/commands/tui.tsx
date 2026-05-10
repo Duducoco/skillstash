@@ -256,6 +256,11 @@ function HomeContent({ hubInfo, loading }: { hubInfo: HubInfo; loading: boolean 
           <Text color="gray">  :  </Text>
           <Text color="cyan">{VERSION}</Text>
         </Box>
+        <Box>
+          <Box width={12}><Text color="gray">GitHub</Text></Box>
+          <Text color="gray">  :  </Text>
+          <Text color="blue" dimColor>https://github.com/Duducoco/skillstash</Text>
+        </Box>
       </Box>
 
       <SectionHeader title={zh ? '已检测 Agent' : 'Detected Agents'} />
@@ -405,26 +410,48 @@ function SelectList({
   cursorIdx: number;
 }) {
   const termRows = process.stdout.rows || 24;
+  const termCols = process.stdout.columns || 80;
   const pageSize = Math.max(5, Math.min(termRows - 12, items.length || 1));
   const half = Math.floor(pageSize / 2);
   const start = Math.max(0, Math.min(cursorIdx - half, Math.max(0, items.length - pageSize)));
   const end = Math.min(items.length, start + pageSize);
   const visible = items.slice(start, end);
 
+  const hasDetail = items.some(i => !!i.detail);
+  const nameColW = hasDetail
+    ? Math.max(14, ...items.map(i => dw(i.label))) + 2
+    : 14;
+  const prefixW = 2; // "▶ " or "  "
+  const descMaxW = Math.max(10, termCols - SIDEBAR_W - 42 - prefixW - nameColW);
+
   return (
     <Box flexDirection="column" marginTop={1}>
       {visible.map((item, vi) => {
         const i = start + vi;
         const active = i === cursorIdx;
+        let desc = '';
+        if (hasDetail && item.detail) {
+          desc = item.detail;
+          if (dw(desc) > descMaxW) {
+            const chars = [...desc];
+            let w = 0;
+            let cut = 0;
+            for (let ci = 0; ci < chars.length; ci++) {
+              w += dw(chars[ci]);
+              if (w > descMaxW - 1) { cut = ci; break; }
+            }
+            desc = chars.slice(0, cut).join('') + '…';
+          }
+        }
         return (
-          <Box key={item.value} flexDirection="row">
+          <Box key={item.value} flexDirection="row" height={1}>
             <Text color={active ? 'cyan' : 'gray'} bold={active}>
               {active ? '▶ ' : '  '}
             </Text>
             <Text color={active ? 'cyan' : 'white'} bold={active}>
-              {padR(item.value, 14)}
+              {padR(item.label, nameColW)}
             </Text>
-            {item.detail && <Text color={active ? 'white' : 'gray'} dimColor={!active}>{item.detail}</Text>}
+            {desc && <Text color="gray" dimColor wrap="truncate">{desc}</Text>}
           </Box>
         );
       })}
@@ -747,7 +774,11 @@ function App({ onDone }: AppProps) {
   const enterRemovePick = useCallback(() => {
     if (!hubInfo.initialized) { setStatus(zh ? 'Hub 未初始化' : 'Hub not initialized', 'error'); return; }
     if (hubInfo.skillNames.length === 0) { setStatus(zh ? '没有可删除的技能' : 'No skills to remove', 'warn'); return; }
-    setSingleSelectItems(hubInfo.skillNames.map(name => ({ value: name, label: name })));
+    const registry = loadRegistry(hubInfo.hubPath);
+    setSingleSelectItems(hubInfo.skillNames.map(name => {
+      const desc = registry.skills[name]?.description || '';
+      return { value: name, label: name, detail: desc || undefined };
+    }));
     setSingleSelectCursor(0);
     setScreen('remove-pick');
     setFocus('content');
@@ -857,7 +888,11 @@ function App({ onDone }: AppProps) {
     if (choice === 'language')   { setLangCursor(getLocale() === 'zh' ? 1 : 0); setScreen('language-pick'); return; }
     if (choice === 'remove') {
       if (!hubInfo.initialized || hubInfo.skillNames.length === 0) { setScreen('home'); return; }
-      setSingleSelectItems(hubInfo.skillNames.map(name => ({ value: name, label: name })));
+      const reg = loadRegistry(hubInfo.hubPath);
+      setSingleSelectItems(hubInfo.skillNames.map(name => {
+        const desc = reg.skills[name]?.description || '';
+        return { value: name, label: name, detail: desc || undefined };
+      }));
       setSingleSelectCursor(0);
       setScreen('remove-pick');
       return;
