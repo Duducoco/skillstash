@@ -1,3 +1,10 @@
+# [0.17.0](https://github.com/Duducoco/skillstash/compare/v0.16.0...v0.17.0) (2026-05-10)
+
+
+### Features
+
+* **tui:** add GitHub link to home and skill descriptions to remove list ([42df8b2](https://github.com/Duducoco/skillstash/commit/42df8b257f89797f6337b8194169cd6ec83704c8))
+
 # [0.16.0](https://github.com/Duducoco/skillstash/compare/v0.15.1...v0.16.0) (2026-05-06)
 
 
