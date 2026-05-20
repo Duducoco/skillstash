@@ -1,3 +1,10 @@
+# [0.18.0](https://github.com/Duducoco/skillstash/compare/v0.17.0...v0.18.0) (2026-05-20)
+
+
+### Features
+
+* **remove:** support batch skill removal in TUI and CLI ([cdc2bb8](https://github.com/Duducoco/skillstash/commit/cdc2bb8686107c9a6a38399c44f95051f8c1654c))
+
 # [0.17.0](https://github.com/Duducoco/skillstash/compare/v0.16.0...v0.17.0) (2026-05-10)
 
 
