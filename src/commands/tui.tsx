@@ -341,11 +341,19 @@ function MultiSelectList({
   zh: boolean;
 }) {
   const termRows = process.stdout.rows || 24;
+  const termCols = process.stdout.columns || 80;
   const pageSize = Math.max(5, Math.min(termRows - 12, items.length || 1));
   const half = Math.floor(pageSize / 2);
   const start = Math.max(0, Math.min(cursorIdx - half, Math.max(0, items.length - pageSize)));
   const end = Math.min(items.length, start + pageSize);
   const visible = items.slice(start, end);
+
+  const hasDetail = items.some(i => !!i.detail);
+  // prefix(2) + marker+space(2) = 4. Cap name col so detail has room.
+  const maxNameW = Math.max(...items.map(i => dw(i.value)), 14);
+  const nameColW = Math.min(maxNameW, 28) + 2;
+  const fixedW = 2 /*prefix*/ + 2 /*marker*/ + nameColW;
+  const descMaxW = Math.max(10, termCols - SIDEBAR_W - 42 - fixedW);
 
   return (
     <Box flexDirection="column" marginTop={1}>
@@ -354,8 +362,28 @@ function MultiSelectList({
         const active = i === cursorIdx;
         const marker = item.checked ? '◉' : '◯';
         const dimmed = item.disabled;
+        let name = item.value;
+        if (dw(name) > nameColW - 1) {
+          const chars = [...name];
+          let w = 0; let cut = 0;
+          for (let ci = 0; ci < chars.length; ci++) {
+            w += dw(chars[ci]);
+            if (w > nameColW - 2) { cut = ci; break; }
+          }
+          name = chars.slice(0, cut).join('') + '…';
+        }
+        let desc = item.detail ?? '';
+        if (desc && dw(desc) > descMaxW) {
+          const chars = [...desc];
+          let w = 0; let cut = 0;
+          for (let ci = 0; ci < chars.length; ci++) {
+            w += dw(chars[ci]);
+            if (w > descMaxW - 1) { cut = ci; break; }
+          }
+          desc = chars.slice(0, cut).join('') + '…';
+        }
         return (
-          <Box key={item.value} flexDirection="row">
+          <Box key={item.value} flexDirection="row" height={1}>
             <Text color={active ? 'cyan' : 'gray'} bold={active}>
               {active ? '▶ ' : '  '}
             </Text>
@@ -364,14 +392,17 @@ function MultiSelectList({
               bold={active && !dimmed}
               dimColor={dimmed}
             >
-              {marker} {padR(item.value, 14)}
+              {marker} {padR(name, nameColW)}
             </Text>
-            <Text
-              color={dimmed ? 'gray' : (item.checked ? 'green' : 'gray')}
-              dimColor={dimmed}
-            >
-              {item.detail ?? ''}
-            </Text>
+            {desc && (
+              <Text
+                color={dimmed ? 'gray' : (item.checked ? 'green' : 'gray')}
+                dimColor={dimmed}
+                wrap="truncate"
+              >
+                {desc}
+              </Text>
+            )}
           </Box>
         );
       })}
@@ -775,11 +806,11 @@ function App({ onDone }: AppProps) {
     if (!hubInfo.initialized) { setStatus(zh ? 'Hub 未初始化' : 'Hub not initialized', 'error'); return; }
     if (hubInfo.skillNames.length === 0) { setStatus(zh ? '没有可删除的技能' : 'No skills to remove', 'warn'); return; }
     const registry = loadRegistry(hubInfo.hubPath);
-    setSingleSelectItems(hubInfo.skillNames.map(name => {
+    setAgentSelectItems(hubInfo.skillNames.map(name => {
       const desc = registry.skills[name]?.description || '';
-      return { value: name, label: name, detail: desc || undefined };
+      return { value: name, label: name, checked: false, detail: desc || undefined };
     }));
-    setSingleSelectCursor(0);
+    setAgentSelectCursor(0);
     setScreen('remove-pick');
     setFocus('content');
   }, [hubInfo, zh]);
@@ -889,11 +920,11 @@ function App({ onDone }: AppProps) {
     if (choice === 'remove') {
       if (!hubInfo.initialized || hubInfo.skillNames.length === 0) { setScreen('home'); return; }
       const reg = loadRegistry(hubInfo.hubPath);
-      setSingleSelectItems(hubInfo.skillNames.map(name => {
+      setAgentSelectItems(hubInfo.skillNames.map(name => {
         const desc = reg.skills[name]?.description || '';
-        return { value: name, label: name, detail: desc || undefined };
+        return { value: name, label: name, checked: false, detail: desc || undefined };
       }));
-      setSingleSelectCursor(0);
+      setAgentSelectCursor(0);
       setScreen('remove-pick');
       return;
     }
@@ -1100,7 +1131,7 @@ function App({ onDone }: AppProps) {
     }
 
     // ── Multi-select screens ────────────────────────────────────────────────────
-    if (['agents-select', 'assign-pick-skills'].includes(screen)) {
+    if (['agents-select', 'assign-pick-skills', 'remove-pick'].includes(screen)) {
       if (key.upArrow)   { setAgentSelectCursor(i => Math.max(0, i - 1)); return; }
       if (key.downArrow) { setAgentSelectCursor(i => Math.min(agentSelectItems.length - 1, i + 1)); return; }
       if (input === ' ') {
@@ -1117,6 +1148,15 @@ function App({ onDone }: AppProps) {
       if (key.return) {
         if (screen === 'agents-select') { commitAgentsSelect(); return; }
         if (screen === 'assign-pick-skills') { commitAssign(); return; }
+        if (screen === 'remove-pick') {
+          const selected = agentSelectItems.filter(i => i.checked).map(i => i.value);
+          if (selected.length === 0) { setStatus(zh ? '未选择技能' : 'No skills selected', 'warn'); return; }
+          const msg = selected.length === 1
+            ? (zh ? `确认删除技能 "${selected[0]}"？此操作不可撤销。` : `Delete skill "${selected[0]}"? This cannot be undone.`)
+            : (zh ? `确认删除 ${selected.length} 个技能？此操作不可撤销。\n${selected.join(', ')}` : `Delete ${selected.length} skills? This cannot be undone.\n${selected.join(', ')}`);
+          confirmThenExec(msg, ['remove', ...selected]);
+          return;
+        }
       }
       if (input === 'a') { setAgentSelectItems(prev => prev.map(item => ({ ...item, checked: !item.disabled }))); return; }
       if (input === 'i') { setAgentSelectItems(prev => prev.map(item => item.disabled ? item : { ...item, checked: !item.checked })); return; }
@@ -1124,16 +1164,12 @@ function App({ onDone }: AppProps) {
     }
 
     // ── Single-select screens ────────────────────────────────────────────────────
-    if (['remove-pick', 'agents-enable', 'agents-disable', 'agents-remove', 'assign-pick-agent'].includes(screen)) {
+    if (['agents-enable', 'agents-disable', 'agents-remove', 'assign-pick-agent'].includes(screen)) {
       if (key.upArrow)   { setSingleSelectCursor(i => Math.max(0, i - 1)); return; }
       if (key.downArrow) { setSingleSelectCursor(i => Math.min(singleSelectItems.length - 1, i + 1)); return; }
       if (key.return) {
         const val = singleSelectItems[singleSelectCursor]?.value;
         if (!val) return;
-        if (screen === 'remove-pick') {
-          confirmThenExec(zh ? `确认删除技能 "${val}"？此操作不可撤销。` : `Delete skill "${val}"? This cannot be undone.`, ['remove', val]);
-          return;
-        }
         if (screen === 'agents-enable')   { execSimple(['agents', 'enable', val]); return; }
         if (screen === 'agents-disable')  { execSimple(['agents', 'disable', val]); return; }
         if (screen === 'agents-remove')   { confirmThenExec(zh ? `确认移除 Agent "${val}"？` : `Remove agent "${val}"?`, ['agents', 'remove', val]); return; }
@@ -1266,16 +1302,23 @@ function App({ onDone }: AppProps) {
       )}
 
       {/* Single-select screens */}
-      {['remove-pick', 'agents-enable', 'agents-disable', 'agents-remove', 'assign-pick-agent'].includes(screen) && (
+      {['agents-enable', 'agents-disable', 'agents-remove', 'assign-pick-agent'].includes(screen) && (
         <Box flexDirection="column">
           <Text bold>
-            {screen === 'remove-pick' && (zh ? '选择要删除的技能：' : 'Select skill to remove:')}
             {screen === 'agents-enable' && (zh ? '选择要启用的 Agent：' : 'Select agent to enable:')}
             {screen === 'agents-disable' && (zh ? '选择要禁用的 Agent：' : 'Select agent to disable:')}
             {screen === 'agents-remove' && (zh ? '选择要移除的 Agent：' : 'Select agent to remove:')}
             {screen === 'assign-pick-agent' && (zh ? '选择要分配技能的 Agent：' : 'Select agent to assign skills to:')}
           </Text>
           <SelectList items={singleSelectItems} cursorIdx={singleSelectCursor} />
+        </Box>
+      )}
+
+      {/* Remove-pick (multi-select) */}
+      {screen === 'remove-pick' && (
+        <Box flexDirection="column">
+          <Text bold>{zh ? '选择要删除的技能（可多选）：' : 'Select skills to remove (multi-select):'}</Text>
+          <MultiSelectList items={agentSelectItems} cursorIdx={agentSelectCursor} zh={zh} />
         </Box>
       )}
 
