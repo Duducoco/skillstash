@@ -1,3 +1,10 @@
+## [0.19.1](https://github.com/Duducoco/skillstash/compare/v0.19.0...v0.19.1) (2026-05-21)
+
+
+### Bug Fixes
+
+* **core:** auto-discover agents when registry is empty ([bba4f28](https://github.com/Duducoco/skillstash/commit/bba4f284afd1e68bb34398618dcca0ba351e6bef))
+
 # [0.19.0](https://github.com/Duducoco/skillstash/compare/v0.18.0...v0.19.0) (2026-05-21)
 
 
