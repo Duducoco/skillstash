@@ -16,10 +16,14 @@ import { withLock } from '../utils/lock.js';
 // ── Per-process in-memory cache ───────────────────────────────────────────────
 let _localStateCache: { hp: string; state: LocalState } | null = null;
 let _registryCache: { hp: string; registry: Registry } | null = null;
+// Tracks which hubs we've already auto-discovered agents for in this process,
+// so loadRegistry() doesn't re-scan and re-write on every call.
+const _autoDiscovered = new Set<string>();
 
 export function invalidateHubCache(): void {
   _localStateCache = null;
   _registryCache = null;
+  _autoDiscovered.clear();
 }
 
 const SKILL_SYNC_DIR = '.skillstash';
@@ -160,8 +164,41 @@ export function loadRegistry(hubPath?: string): Registry {
     agents: local.agents,
     agentSkills: local.agentSkills || {},
   };
+  autoDiscoverAgents(hp, result);
   _registryCache = { hp, registry: result };
   return result;
+}
+
+/**
+ * Heal an unconfigured agents map: when local.json has no agents at all
+ * (e.g. user never ran `agents select`, or local.json was wiped), scan the
+ * system and register any built-in/custom agents whose dir is present.
+ *
+ * Scope is intentionally narrow: we only act when the agents map is empty.
+ * Once the user has *any* registration, we don't second-guess their choices —
+ * removing/disabling agents stays explicit via `agents disable/remove`.
+ *
+ * Runs at most once per (process, hub).
+ */
+function autoDiscoverAgents(hp: string, registry: Registry): void {
+  if (_autoDiscovered.has(hp)) return;
+  _autoDiscovered.add(hp);
+
+  if (Object.keys(registry.agents).length > 0) return;
+
+  const available = detectAgents().filter((a) => a.available);
+  if (available.length === 0) return;
+
+  for (const a of available) {
+    registry.agents[a.name] = a;
+  }
+
+  // Persist directly to local.json without going through saveRegistry — we're
+  // mid-load and don't want to round-trip the shared registry.json.
+  const local = loadLocalState(hp);
+  local.agents = registry.agents;
+  withLock(hp, () => writeJson(getLocalPath(hp), local));
+  _localStateCache = { hp, state: local };
 }
 
 export function saveRegistry(registry: Registry, hubPath?: string): void {

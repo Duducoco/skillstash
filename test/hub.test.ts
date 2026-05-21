@@ -13,6 +13,7 @@ import {
   saveLocalState,
   initHub,
   listHubSkills,
+  invalidateHubCache,
 } from '../src/core/hub.js';
 import { createEmptyRegistry, addSkillToRegistry, addAgentToRegistry } from '../src/core/registry.js';
 import { resetCustomAgents, getAgentDefinitions } from '../src/core/agents.js';
@@ -23,11 +24,13 @@ let hubDir: string;
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'skillstash-hub-test-'));
   hubDir = path.join(tmpDir, 'skills-hub');
+  invalidateHubCache();
 });
 
 afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
   resetCustomAgents();
+  invalidateHubCache();
 });
 
 describe('getRegistryPath', () => {
@@ -212,6 +215,76 @@ describe('loadRegistry', () => {
 
     const loaded = loadRegistry(hubDir);
     expect(loaded.agents['claude'].enabled).toBe(true);
+  });
+
+  it('auto-discovers a custom agent whose dir appears after init', () => {
+    // Init with no agents registered. Don't loadRegistry yet — the first load
+    // would trigger auto-discovery, which would register any real-system agents
+    // (e.g. ~/.claude on the test machine) and flip the map to non-empty,
+    // disabling further discovery for this hub.
+    saveRegistry(createEmptyRegistry(), hubDir);
+
+    // Custom agent's parent dir now exists on disk.
+    const lateDir = path.join(tmpDir, 'late-agent');
+    fs.mkdirSync(lateDir, { recursive: true });
+    saveLocalState({
+      ...loadLocalState(hubDir),
+      customAgents: [
+        { name: 'late-bot', skillsPath: path.join(lateDir, 'skills'), linkType: 'copy' },
+      ],
+    }, hubDir);
+    invalidateHubCache();
+
+    const after = loadRegistry(hubDir);
+    expect(after.agents['late-bot']).toBeDefined();
+    expect(after.agents['late-bot'].available).toBe(true);
+    expect(after.agents['late-bot'].enabled).toBe(true);
+
+    // Persisted to local.json, not just in-memory.
+    const persisted = JSON.parse(fs.readFileSync(path.join(hubDir, 'local.json'), 'utf-8'));
+    expect(persisted.agents['late-bot']).toBeDefined();
+  });
+
+  it('does not auto-add a custom agent whose dir is missing', () => {
+    saveRegistry(createEmptyRegistry(), hubDir);
+    saveLocalState({
+      ...loadLocalState(hubDir),
+      customAgents: [
+        { name: 'ghost-bot', skillsPath: '/definitely/does/not/exist/skills', linkType: 'copy' },
+      ],
+    }, hubDir);
+    invalidateHubCache();
+
+    const loaded = loadRegistry(hubDir);
+    expect(loaded.agents['ghost-bot']).toBeUndefined();
+  });
+
+  it('does not auto-discover when agents map is already non-empty', () => {
+    // Once the user has any registration, auto-discovery stays out of the way —
+    // even if a fresh agent dir would now match.
+    const reg = createEmptyRegistry();
+    addAgentToRegistry(reg, 'sentinel', {
+      name: 'sentinel',
+      skillsPath: '/tmp/sentinel/skills',
+      linkType: 'copy',
+      available: false,
+      enabled: false,
+    });
+    saveRegistry(reg, hubDir);
+
+    const liveDir = path.join(tmpDir, 'live-agent');
+    fs.mkdirSync(liveDir, { recursive: true });
+    saveLocalState({
+      ...loadLocalState(hubDir),
+      customAgents: [
+        { name: 'live-bot', skillsPath: path.join(liveDir, 'skills'), linkType: 'copy' },
+      ],
+    }, hubDir);
+    invalidateHubCache();
+
+    const loaded = loadRegistry(hubDir);
+    expect(loaded.agents['live-bot']).toBeUndefined();
+    expect(loaded.agents['sentinel']).toBeDefined();
   });
 });
 
