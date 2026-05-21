@@ -100,6 +100,7 @@ function doAssign(options: {
   for (const agent of targetAgents) {
     fs.mkdirSync(agent.skillsPath, { recursive: true });
     const agentSkillList = reg2.agentSkills[agent.name] ?? enabledSkillNames;
+    const assignedSkillSet = new Set(agentSkillList);
 
     for (const skillName of agentSkillList) {
       const src = path.join(skillsDir, skillName);
@@ -111,6 +112,17 @@ function doAssign(options: {
         reg2.skills[skillName].agents.push(agent.name);
       }
       totalLinked++;
+    }
+
+    for (const skillName of Object.keys(reg2.skills)) {
+      if (assignedSkillSet.has(skillName)) continue;
+
+      reg2.skills[skillName].agents = reg2.skills[skillName].agents.filter(
+        (agentName) => agentName !== agent.name,
+      );
+
+      const dest = path.join(agent.skillsPath, skillName);
+      if (exists(dest)) removeDir(dest);
     }
   }
 
@@ -222,5 +234,31 @@ describe('assign: link step copies skills to agent directories', () => {
 
     doAssign({ skillsForAgent: { agent1: ['finance-ops'] } });
     expect(exists(path.join(agentDir, 'finance-ops', 'stale.txt'))).toBe(false);
+  });
+
+  it('re-assign removes skills no longer assigned to that agent', () => {
+    doAssign({ skillsForAgent: { agent1: ['finance-ops', 'anti-distill'] } });
+    expect(exists(path.join(agentDir, 'anti-distill'))).toBe(true);
+
+    doAssign({ skillsForAgent: { agent1: ['finance-ops'] } });
+    expect(exists(path.join(agentDir, 'finance-ops'))).toBe(true);
+    expect(exists(path.join(agentDir, 'anti-distill'))).toBe(false);
+  });
+
+  it('re-assign removes stale registry agent references', () => {
+    doAssign({ skillsForAgent: { agent1: ['finance-ops', 'anti-distill'] } });
+    let reg = loadRegistry(hubDir);
+    expect(reg.skills['anti-distill'].agents).toContain('agent1');
+
+    doAssign({ skillsForAgent: { agent1: ['finance-ops'] } });
+    reg = loadRegistry(hubDir);
+    expect(reg.skills['finance-ops'].agents).toContain('agent1');
+    expect(reg.skills['anti-distill'].agents).not.toContain('agent1');
+  });
+
+  it('does not remove non-hub directories from the agent', () => {
+    makeSkillDir(agentDir, 'local-only');
+    doAssign({ skillsForAgent: { agent1: ['finance-ops'] } });
+    expect(exists(path.join(agentDir, 'local-only'))).toBe(true);
   });
 });

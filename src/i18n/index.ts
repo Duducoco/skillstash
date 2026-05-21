@@ -100,7 +100,6 @@ export interface Messages {
     configuringHeader: string;
     assignmentSaved: string;
     agentSkillCount: string;
-    runLinkHint: string;
     linkingSkills: string;
     linkedSkills: string;
   };

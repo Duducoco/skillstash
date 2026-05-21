@@ -300,7 +300,7 @@ skillstash assign                   # Configure all enabled agents
 skillstash assign --agent claude    # Configure only a specific agent
 ```
 
-Running the command opens a checkbox prompt for each agent. Items are pre-checked based on the previous assignment (or all-checked on first run). After confirming, you are prompted to apply the changes immediately with `link`.
+Running the command opens a checkbox prompt for each agent. Items are pre-checked based on the previous assignment (or all-checked on first run). After confirming, skillstash automatically applies the assignment to the agent directory and removes hub-managed skills that are no longer assigned to that agent.
 
 Assignments are stored in `local.json` (gitignored) and are completely independent per machine. Agents without an explicit assignment continue to receive all globally enabled skills — the new capability is entirely opt-in.
 

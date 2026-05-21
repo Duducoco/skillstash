@@ -103,9 +103,8 @@ export const en: Messages = {
     configuringHeader: 'Configuring skill assignment for this device ({count} skill(s) available)',
     assignmentSaved: 'Assignment saved to this device (local.json)',
     agentSkillCount: '{agent}: {count} skill(s)',
-    runLinkHint: 'Run `skillstash link` to apply changes to agent directories.',
     linkingSkills: 'Linking skills to agent directories...',
-    linkedSkills: 'Linked {count} skill(s)',
+    linkedSkills: 'Linked {count} skill(s), removed {removed} unassigned skill(s)',
   },
   agents: {
     noAgentsRegistered: 'No agents registered.',

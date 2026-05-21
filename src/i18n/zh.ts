@@ -103,9 +103,8 @@ export const zh: Messages = {
     configuringHeader: '正在为本设备配置技能分配（{count} 个技能可用）',
     assignmentSaved: '分配已保存到本设备（local.json）',
     agentSkillCount: '{agent}：{count} 个技能',
-    runLinkHint: '运行 `skillstash link` 将变更应用到 Agent 目录。',
     linkingSkills: '正在将技能链接到 Agent 目录...',
-    linkedSkills: '已链接 {count} 个技能',
+    linkedSkills: '已链接 {count} 个技能，移除 {removed} 个未分配技能',
   },
   agents: {
     noAgentsRegistered: '没有已注册的 Agent。',

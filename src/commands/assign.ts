@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import { Command } from 'commander';
 import { hubExists, getSkillsPath, loadRegistry, saveRegistry, getDefaultHubPath } from '../core/hub.js';
 import { copyDirRecursive, removeDir, ensureDir, exists } from '../utils/fs.js';
-import { selectSkillsForAgent, promptLinkNow } from '../utils/prompt.js';
+import { selectSkillsForAgent } from '../utils/prompt.js';
 import { gitCommit } from '../core/git.js';
 import { logger } from '../utils/logger.js';
 import { t } from '../i18n/index.js';
@@ -68,19 +68,16 @@ export function registerAssignCommand(program: Command): void {
         logger.info(t('assign.agentSkillCount', { agent: chalk.cyan(agent.name), count: assigned.length }));
       }
 
-      logger.info(t('assign.runLinkHint'));
-
-      // Optionally run link now
-      const runLink = await promptLinkNow();
-      if (!runLink) return;
-
       logger.step(t('assign.linkingSkills'));
       const skillsDir = getSkillsPath(hubPath);
       let totalLinked = 0;
+      let totalRemoved = 0;
+      const enabledSkillNames = enabledSkills.map((s) => s.name);
 
       for (const agent of targetAgents) {
         ensureDir(agent.skillsPath);
-        const agentSkillList = registry.agentSkills[agent.name] ?? enabledSkills.map((s) => s.name);
+        const agentSkillList = registry.agentSkills[agent.name] ?? enabledSkillNames;
+        const assignedSkillSet = new Set(agentSkillList);
 
         for (const skillName of agentSkillList) {
           const srcDir = path.join(skillsDir, skillName);
@@ -118,10 +115,28 @@ export function registerAssignCommand(program: Command): void {
             logger.error(t('common.skillLinkError', { agent: agent.name, skill: skillName, message: (e as Error).message }));
           }
         }
+
+        for (const skillName of Object.keys(registry.skills)) {
+          if (assignedSkillSet.has(skillName)) continue;
+
+          registry.skills[skillName].agents = registry.skills[skillName].agents.filter(
+            (agentName) => agentName !== agent.name,
+          );
+
+          const destDir = path.join(agent.skillsPath, skillName);
+          if (exists(destDir)) {
+            try {
+              removeDir(destDir);
+              totalRemoved++;
+            } catch (e) {
+              logger.error(t('common.skillLinkError', { agent: agent.name, skill: skillName, message: (e as Error).message }));
+            }
+          }
+        }
       }
 
       saveRegistry(registry, hubPath);
       gitCommit(hubPath, 'assign: update skill assignments');
-      logger.success(t('assign.linkedSkills', { count: totalLinked }));
+      logger.success(t('assign.linkedSkills', { count: totalLinked, removed: totalRemoved }));
     });
 }

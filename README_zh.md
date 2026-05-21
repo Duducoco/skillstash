@@ -297,7 +297,7 @@ skillstash assign                   # 配置所有已启用的 Agent
 skillstash assign --agent claude    # 只配置指定 Agent
 ```
 
-运行后会为每个 Agent 打开复选框提示，默认勾选上次的配置（首次运行则全选）。确认后可选择立即执行 `link` 应用变更。
+运行后会为每个 Agent 打开复选框提示，默认勾选上次的配置（首次运行则全选）。确认后，skillstash 会自动把分配结果应用到 Agent 目录，并移除该 Agent 中不再分配的 Hub 托管技能。
 
 配置保存在 `local.json`（已加入 .gitignore）中，每台设备完全独立。没有显式配置的 Agent 会继续接收所有全局启用的 skill — 这是纯增量的新能力，不影响现有用法。
 

@@ -868,16 +868,8 @@ function App({ onDone }: AppProps) {
     const selectedSkills = agentSelectItems.filter(i => i.checked).map(i => i.value);
     registry.agentSkills[assignAgentName] = selectedSkills;
     saveRegistry(registry, hubInfo.hubPath);
-    setStatus(
-      zh ? `✔ 已为 ${assignAgentName} 分配 ${selectedSkills.length} 个技能`
-        : `✔ Assigned ${selectedSkills.length} skills to ${assignAgentName}`,
-      'success',
-    );
-    refreshHub();
-    setSession('success');
-    setFocus('sidebar');
-    setScreen('home');
-  }, [hubInfo, assignAgentName, agentSelectItems, refreshHub, zh]);
+    execSimple(['assign', '--agent', assignAgentName]);
+  }, [hubInfo, assignAgentName, agentSelectItems, execSimple]);
 
   const commitLanguage = useCallback(() => {
     const newLang: Locale = langCursor === 0 ? 'en' : 'zh';
