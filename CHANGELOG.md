@@ -1,3 +1,10 @@
+# [0.19.0](https://github.com/Duducoco/skillstash/compare/v0.18.0...v0.19.0) (2026-05-21)
+
+
+### Features
+
+* **assign:** auto-link assigned skills ([ec7ebdd](https://github.com/Duducoco/skillstash/commit/ec7ebdd698f2b2f8c7b4d4a0e522ab671a7d0fde))
+
 # [0.18.0](https://github.com/Duducoco/skillstash/compare/v0.17.0...v0.18.0) (2026-05-20)
 
 
