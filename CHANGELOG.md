@@ -1,3 +1,10 @@
+## [0.19.2](https://github.com/Duducoco/skillstash/compare/v0.19.1...v0.19.2) (2026-06-04)
+
+
+### Bug Fixes
+
+* **assign:** remove unassigned skills during link ([78b0d0f](https://github.com/Duducoco/skillstash/commit/78b0d0f8fc155aac3aaf7d8deb2e33666f08f20b))
+
 ## [0.19.1](https://github.com/Duducoco/skillstash/compare/v0.19.0...v0.19.1) (2026-05-21)
 
 
