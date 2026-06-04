@@ -61,6 +61,10 @@ export function registerLinkCommand(program: Command): void {
         const agentSkillNames = deviceFilter !== undefined
           ? skillNames.filter((s) => deviceFilter.includes(s))
           : skillNames;
+        const assignedSkillSet = new Set(agentSkillNames);
+        const managedCleanupNames = options.skill
+          ? Object.keys(registry.skills).filter((s) => s === options.skill)
+          : Object.keys(registry.skills);
 
         for (const skillName of agentSkillNames) {
           const srcDir = path.join(skillsDir, skillName);
@@ -107,6 +111,20 @@ export function registerLinkCommand(program: Command): void {
             totalLinked++;
           } catch (e) {
             logger.error(`  ✗ ${skillName}: ${(e as Error).message}`);
+          }
+        }
+
+        // Remove hub-managed skills that this agent is no longer assigned.
+        for (const skillName of managedCleanupNames) {
+          if (assignedSkillSet.has(skillName)) continue;
+
+          registry.skills[skillName].agents = registry.skills[skillName].agents.filter(
+            (agentName) => agentName !== agent.name,
+          );
+
+          const destDir = path.join(agent.skillsPath, skillName);
+          if (exists(destDir)) {
+            removeDir(destDir);
           }
         }
 

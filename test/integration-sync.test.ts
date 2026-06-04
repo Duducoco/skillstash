@@ -79,7 +79,13 @@ function doSync(options: { noLink?: boolean; clean?: boolean } = {}) {
     for (const agent of agents) {
       fs.mkdirSync(agent.skillsPath, { recursive: true });
 
-      for (const skillName of enabledSkills) {
+      const deviceFilter = reg.agentSkills?.[agent.name];
+      const agentSkillList = deviceFilter !== undefined
+        ? enabledSkills.filter((s) => deviceFilter.includes(s))
+        : enabledSkills;
+      const assignedSkillSet = new Set(agentSkillList);
+
+      for (const skillName of agentSkillList) {
         const src = path.join(skillsDir, skillName);
         const dest = path.join(agent.skillsPath, skillName);
         if (!exists(src)) continue;
@@ -90,10 +96,21 @@ function doSync(options: { noLink?: boolean; clean?: boolean } = {}) {
         }
       }
 
+      for (const skillName of Object.keys(reg.skills)) {
+        if (assignedSkillSet.has(skillName)) continue;
+
+        reg.skills[skillName].agents = reg.skills[skillName].agents.filter(
+          (agentName) => agentName !== agent.name,
+        );
+
+        const dest = path.join(agent.skillsPath, skillName);
+        if (exists(dest)) removeDir(dest);
+      }
+
       if (options.clean) {
         for (const entry of fs.readdirSync(agent.skillsPath, { withFileTypes: true })
           .filter((d) => d.isDirectory()).map((d) => d.name)) {
-          if (!enabledSkills.includes(entry)) removeDir(path.join(agent.skillsPath, entry));
+          if (!agentSkillList.includes(entry)) removeDir(path.join(agent.skillsPath, entry));
         }
       }
     }
@@ -183,6 +200,27 @@ describe('sync: link step', () => {
     const result = doSync();
     expect(result.lastSync).not.toBeNull();
     expect(new Date(result.lastSync!).getTime()).toBeGreaterThan(0);
+  });
+
+  it('removes hub skills no longer assigned to the agent', () => {
+    const skillsDir = getSkillsPath(hubDir);
+    makeSkillDir(skillsDir, 'skill-a');
+    makeSkillDir(skillsDir, 'skill-b');
+    const reg = loadRegistry(hubDir);
+    addSkillToRegistry(reg, 'skill-a', { version: '1.0.0', source: 'local', hash: hashDir(path.join(skillsDir, 'skill-a')) });
+    addSkillToRegistry(reg, 'skill-b', { version: '1.0.0', source: 'local', hash: hashDir(path.join(skillsDir, 'skill-b')) });
+    saveRegistry(reg, hubDir);
+
+    doSync();
+    const reg2 = loadRegistry(hubDir);
+    reg2.agentSkills['testagent'] = ['skill-a'];
+    saveRegistry(reg2, hubDir);
+
+    const result = doSync();
+    expect(exists(path.join(agentDir, 'skill-a'))).toBe(true);
+    expect(exists(path.join(agentDir, 'skill-b'))).toBe(false);
+    expect(result.skills['skill-a'].agents).toContain('testagent');
+    expect(result.skills['skill-b'].agents).not.toContain('testagent');
   });
 });
 

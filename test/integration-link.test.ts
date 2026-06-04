@@ -68,7 +68,16 @@ function doLink(options: { agent?: string; skill?: string; clean?: boolean } = {
   for (const agent of agents) {
     fs.mkdirSync(agent.skillsPath, { recursive: true });
 
-    for (const skillName of skillNames) {
+    const deviceFilter = reg.agentSkills?.[agent.name];
+    const agentSkillNames = deviceFilter !== undefined
+      ? skillNames.filter((s) => deviceFilter.includes(s))
+      : skillNames;
+    const assignedSkillSet = new Set(agentSkillNames);
+    const managedCleanupNames = options.skill
+      ? Object.keys(reg.skills).filter((s) => s === options.skill)
+      : Object.keys(reg.skills);
+
+    for (const skillName of agentSkillNames) {
       const src = path.join(skillsDir, skillName);
       const dest = path.join(agent.skillsPath, skillName);
       if (!exists(src)) continue;
@@ -79,10 +88,21 @@ function doLink(options: { agent?: string; skill?: string; clean?: boolean } = {
       }
     }
 
+    for (const skillName of managedCleanupNames) {
+      if (assignedSkillSet.has(skillName)) continue;
+
+      reg.skills[skillName].agents = reg.skills[skillName].agents.filter(
+        (agentName) => agentName !== agent.name,
+      );
+
+      const dest = path.join(agent.skillsPath, skillName);
+      if (exists(dest)) removeDir(dest);
+    }
+
     if (options.clean) {
       for (const entry of fs.readdirSync(agent.skillsPath, { withFileTypes: true })
         .filter((d) => d.isDirectory()).map((d) => d.name)) {
-        if (!skillNames.includes(entry)) removeDir(path.join(agent.skillsPath, entry));
+        if (!agentSkillNames.includes(entry)) removeDir(path.join(agent.skillsPath, entry));
       }
     }
   }
@@ -147,6 +167,33 @@ describe('link: copies skills to agent directory', () => {
     doLink();
     expect(exists(path.join(agentDir, 'finance-ops'))).toBe(false);
     expect(exists(path.join(agentDir, 'anti-distill'))).toBe(true);
+  });
+
+  it('removes hub skills no longer assigned to the agent', () => {
+    doLink();
+    let reg = loadRegistry(hubDir);
+    reg.agentSkills['testagent'] = ['finance-ops'];
+    saveRegistry(reg, hubDir);
+
+    doLink();
+    expect(exists(path.join(agentDir, 'finance-ops'))).toBe(true);
+    expect(exists(path.join(agentDir, 'anti-distill'))).toBe(false);
+
+    reg = loadRegistry(hubDir);
+    expect(reg.skills['finance-ops'].agents).toContain('testagent');
+    expect(reg.skills['anti-distill'].agents).not.toContain('testagent');
+  });
+
+  it('keeps local-only directories when removing unassigned hub skills', () => {
+    doLink();
+    makeSkillDir(agentDir, 'local-only');
+    const reg = loadRegistry(hubDir);
+    reg.agentSkills['testagent'] = ['finance-ops'];
+    saveRegistry(reg, hubDir);
+
+    doLink();
+    expect(exists(path.join(agentDir, 'anti-distill'))).toBe(false);
+    expect(exists(path.join(agentDir, 'local-only'))).toBe(true);
   });
 });
 

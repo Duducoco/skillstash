@@ -220,6 +220,7 @@ export function registerSyncCommand(program: Command): void {
             const agentSkillList = deviceFilter !== undefined
               ? enabledSkills.filter((s) => deviceFilter.includes(s))
               : enabledSkills;
+            const assignedSkillSet = new Set(agentSkillList);
 
             let agentLinked = 0;
             for (const skillName of agentSkillList) {
@@ -242,6 +243,20 @@ export function registerSyncCommand(program: Command): void {
                 logger.progress(`${agent.name}/${skillName}`, agentLinked, agentSkillList.length);
               } catch (e) {
                 logger.error(t('common.skillLinkError', { agent: agent.name, skill: skillName, message: (e as Error).message }));
+              }
+            }
+
+            // Remove hub-managed skills that this agent is no longer assigned.
+            for (const skillName of currentSkillNames) {
+              if (assignedSkillSet.has(skillName)) continue;
+
+              registry.skills[skillName].agents = registry.skills[skillName].agents.filter(
+                (agentName) => agentName !== agent.name,
+              );
+
+              const destDir = path.join(agent.skillsPath, skillName);
+              if (exists(destDir)) {
+                removeDir(destDir);
               }
             }
 
